@@ -123,8 +123,23 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  /**
+   * Synced from Cognito on sign-in; local edits are overwritten.
+   */
+  name?: string | null;
+  /**
+   * Immutable Cognito user identifier.
+   */
+  cognitoSub?: string | null;
+  /**
+   * Derived from Cognito group membership on every sign-in. Change the group in Cognito, not here.
+   */
+  roles?: ('admin' | 'editor')[] | null;
   updatedAt: string;
   createdAt: string;
+  /**
+   * Synced from the Cognito email claim on every sign-in.
+   */
   email: string;
   resetPasswordToken?: string | null;
   resetPasswordExpiration?: string | null;
@@ -240,6 +255,9 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  name?: T;
+  cognitoSub?: T;
+  roles?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;

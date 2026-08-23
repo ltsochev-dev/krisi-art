@@ -1,46 +1,49 @@
+import type { User } from '@/payload-types'
+
 import { getPayload } from 'payload'
+
 import config from '../../src/payload.config.js'
 
+/**
+ * There are no local passwords any more — Cognito is the only identity provider —
+ * so the seeded user is just the local mirror a real Cognito login would create.
+ */
 export const testUser = {
+  cognitoSub: 'e2e-test-cognito-sub',
   email: 'dev@payloadcms.com',
-  password: 'test',
+  name: 'E2E Test User',
+  roles: ['admin' as const],
 }
 
 /**
- * Seeds a test user for e2e admin tests.
+ * Seeds the admin user that e2e tests sign in as, returning the created doc so
+ * `login()` can mint a session for it.
+ *
+ * `overrideAccess` is required: the users collection denies `create` outright so
+ * that accounts can only ever be provisioned from verified Cognito claims.
  */
-export async function seedTestUser(): Promise<void> {
+export async function seedTestUser(): Promise<User> {
   const payload = await getPayload({ config })
 
-  // Delete existing test user if any
   await payload.delete({
     collection: 'users',
-    where: {
-      email: {
-        equals: testUser.email,
-      },
-    },
+    overrideAccess: true,
+    where: { email: { equals: testUser.email } },
   })
 
-  // Create fresh test user
-  await payload.create({
+  return await payload.create({
     collection: 'users',
     data: testUser,
+    overrideAccess: true,
   })
 }
 
-/**
- * Cleans up test user after tests
- */
 export async function cleanupTestUser(): Promise<void> {
   const payload = await getPayload({ config })
 
   await payload.delete({
     collection: 'users',
-    where: {
-      email: {
-        equals: testUser.email,
-      },
-    },
+    overrideAccess: true,
+    where: { email: { equals: testUser.email } },
   })
 }

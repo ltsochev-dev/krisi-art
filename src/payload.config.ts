@@ -28,12 +28,25 @@ const email = process.env.RESEND_API_KEY
 
 export default buildConfig({
   admin: {
+    components: {
+      // Payload's own login form is gone (the users collection disables the
+      // local strategy), so this is the only way into the admin panel.
+      beforeLogin: ['@/components/admin/CognitoLoginButton#CognitoLoginButton'],
+      logout: {
+        Button: '@/components/admin/CognitoLogoutButton#CognitoLogoutButton',
+      },
+    },
     user: Users.slug,
     importMap: {
       baseDir: path.resolve(dirname),
     },
   },
   collections: [Users, Media],
+  // The app only talks to Payload through the Local API and REST, so the
+  // GraphQL endpoint and its playground stay off.
+  graphQL: {
+    disable: true,
+  },
   editor: lexicalEditor(),
   email,
   secret: process.env.PAYLOAD_SECRET || '',

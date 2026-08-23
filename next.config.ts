@@ -27,6 +27,23 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(dirname),
   },
+  // Payload still ships its own logout views, which only clear the local cookie
+  // and would leave the Cognito Hosted UI session alive. Funnel every logout
+  // path through the route that ends both sessions.
+  async redirects() {
+    return [
+      {
+        source: "/admin/logout",
+        destination: "/api/auth/cognito/logout",
+        permanent: false,
+      },
+      {
+        source: "/admin/logout-inactivity",
+        destination: "/api/auth/cognito/logout",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default withPayload(nextConfig, { devBundleServerPackages: false });
