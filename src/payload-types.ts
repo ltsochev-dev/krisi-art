@@ -218,6 +218,10 @@ export interface Artwork {
 export interface Media {
   id: number;
   /**
+   * Off until the image is ready. Disabled images are hidden everywhere on the site, and any artwork using one drops out of the gallery.
+   */
+  enabled?: boolean | null;
+  /**
    * Describe the image for screen readers and search engines.
    */
   alt: string;
@@ -493,6 +497,7 @@ export interface TagsSelect<T extends boolean = true> {
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
+  enabled?: T;
   alt?: T;
   caption?: T;
   updatedAt?: T;

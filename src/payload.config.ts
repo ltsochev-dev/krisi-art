@@ -18,6 +18,7 @@ import { Homepage } from './globals/Homepage'
 import { SiteSettings } from './globals/SiteSettings'
 import { getS3Config } from './lib/aws/s3'
 import { ensureDefaultAlbum } from './lib/content/default-album'
+import { migrations } from './migrations'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -121,6 +122,33 @@ export default buildConfig({
     client: {
       url: process.env.DATABASE_URL || '',
     },
+    /**
+     * Migrations run on boot in production, and only there.
+     *
+     * The adapter skips its dev schema push whenever `NODE_ENV=production`, so
+     * without this a deployed container starts against whatever schema the
+     * volume happens to hold and fails on the first query. The `payload migrate`
+     * CLI is not an option in the deployed image: `output: 'standalone'` traces
+     * only what `server.js` imports, which excludes the CLI bin, the `src` tree
+     * and the dev dependencies it needs. Importing the array statically is what
+     * gets the migration code bundled into the server build.
+     *
+     * Safe to re-run: `migrate()` skips any migration already recorded in
+     * `payload-migrations`, so restarts are no-ops. A failing migration runs in
+     * a transaction and then calls `process.exit(1)`, so the container dies
+     * rather than serving a half-migrated schema.
+     *
+     * Viable because SQLite has a single writer and therefore a single replica.
+     * On a database that allows more than one, move this back out into a
+     * separate migrate step so concurrent boots cannot race.
+     *
+     * One caveat worth knowing: a database that was ever schema-pushed carries a
+     * `batch: -1` row in `payload-migrations`, and `migrate()` answers that with
+     * an interactive confirm prompt whose cancel path is `process.exit(0)`. With
+     * no TTY that exits zero having run nothing. Never seed the deployed volume
+     * from a development database file.
+     */
+    prodMigrations: migrations,
   }),
   sharp,
   plugins: storage ? [storage] : [],

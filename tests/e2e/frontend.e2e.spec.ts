@@ -1,20 +1,12 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 
 test.describe('Frontend', () => {
-  let page: Page
-
-  test.beforeAll(async ({ browser }, testInfo) => {
-    const context = await browser.newContext()
-    page = await context.newPage()
-  })
-
-  test('can go on homepage', async ({ page }) => {
+  test('renders the site chrome from the site-settings global', async ({ page }) => {
     await page.goto('http://localhost:3000')
 
-    await expect(page).toHaveTitle(/Payload Blank Template/)
-
-    const heading = page.locator('h1').first()
-
-    await expect(heading).toHaveText('Welcome to your new project.')
+    // Both come from `site-settings`; `Kristina Kostova` is the field default,
+    // so this holds on a database where the global has never been saved.
+    await expect(page).toHaveTitle(/Kristina Kostova/)
+    await expect(page.locator('h1').first()).toHaveText('Kristina Kostova')
   })
 })

@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { seedMedia } from '../helpers/seedMedia'
 import config from '@/payload.config'
-import { findGalleryArtworks, findPublishedAlbumsBySlug } from '@/lib/content/gallery'
+import { findGalleryArtworks, findPublishedAlbumsBySlug, toGalleryImage } from '@/lib/content/gallery'
 import { DEFAULT_ALBUM_SLUG, findDefaultAlbum } from '@/lib/content/default-album'
 import { validateContactInput } from '@/lib/validation/contact'
 import { CONTACT_LIMITS } from '@/lib/validation/contact'
@@ -23,6 +23,8 @@ const PREFIX = 'zz-int-test'
 
 let payload: Payload
 let media: Media
+/** Seeded without `enabled`, so it carries the collection's `false` default. */
+let notReadyMedia: Media
 /** Album ordering: `first` sorts ahead of `second`. */
 let first: Album
 let second: Album
@@ -31,7 +33,8 @@ describe('portfolio content', () => {
   beforeAll(async () => {
     payload = await getPayload({ config: await config })
 
-    media = await seedMedia({ name: `${PREFIX}-image`, payload })
+    media = await seedMedia({ enabled: true, name: `${PREFIX}-image`, payload })
+    notReadyMedia = await seedMedia({ name: `${PREFIX}-not-ready`, payload })
 
     first = await payload.create({
       collection: 'albums',
@@ -68,6 +71,19 @@ describe('portfolio content', () => {
     })
 
     await payload.delete({ collection: 'media', id: media.id, overrideAccess: true })
+    await payload.delete({ collection: 'media', id: notReadyMedia.id, overrideAccess: true })
+  })
+
+  describe('the media readiness gate', () => {
+    it('leaves a new upload disabled until someone enables it', () => {
+      // `seedMedia` sent no `enabled`, so this is the collection default.
+      expect(notReadyMedia.enabled).toBeFalsy()
+    })
+
+    it('projects a disabled image as absent rather than broken', () => {
+      expect(toGalleryImage(notReadyMedia)).toBeNull()
+      expect(toGalleryImage(media)).not.toBeNull()
+    })
   })
 
   describe('media derivatives', () => {
@@ -219,6 +235,20 @@ describe('portfolio content', () => {
         },
         overrideAccess: true,
       })
+
+      // Published artwork, unfinished image. The artwork itself is fine; the
+      // gallery must still skip it until the image is switched on.
+      await payload.create({
+        collection: 'artworks',
+        data: {
+          album: first.id,
+          image: notReadyMedia.id,
+          published: true,
+          sortOrder: 3,
+          title: `${PREFIX} A-not-ready`,
+        },
+        overrideAccess: true,
+      })
     })
 
     it('orders by album sortOrder, then artwork sortOrder', async () => {
@@ -282,6 +312,20 @@ describe('portfolio content', () => {
       })
 
       expect(result.limit).toBe(48)
+    })
+
+    it('excludes artworks whose image is not enabled yet', async () => {
+      const result = await findGalleryArtworks({
+        albumSlugs: [first.slug],
+        limit: 20,
+        payload,
+      })
+
+      expect(result.artworks.map((artwork) => artwork.title)).not.toContain(
+        `${PREFIX} A-not-ready`,
+      )
+      // Filtered in the query, not after it, so the count matches the rows.
+      expect(result.totalDocs).toBe(result.artworks.length)
     })
 
     it('projects the image sizes the frontend needs', async () => {

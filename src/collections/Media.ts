@@ -13,11 +13,34 @@ export const Media: CollectionConfig = {
     update: editors,
   },
   admin: {
-    defaultColumns: ['filename', 'alt', 'mimeType', 'filesize', 'updatedAt'],
+    defaultColumns: ['filename', 'alt', 'enabled', 'mimeType', 'filesize', 'updatedAt'],
     group: 'Content',
     useAsTitle: 'alt',
   },
   fields: [
+    {
+      /**
+       * Readiness gate, deliberately off by default.
+       *
+       * An upload is not publishable the moment the bytes land — the alt text,
+       * caption and crop all get filled in afterwards. Defaulting to `false`
+       * means a half-finished image is never briefly live: it appears on the
+       * site only once someone ticks this.
+       *
+       * Enforced in `@/lib/content/gallery`, not in access control, because the
+       * frontend reads everything with `overrideAccess: true` and would bypass
+       * an access constraint. See `toGalleryImage` and `findGalleryArtworks`.
+       */
+      name: 'enabled',
+      type: 'checkbox',
+      admin: {
+        description:
+          'Off until the image is ready. Disabled images are hidden everywhere on the site, and any artwork using one drops out of the gallery.',
+        position: 'sidebar',
+      },
+      defaultValue: false,
+      index: true,
+    },
     {
       name: 'alt',
       type: 'text',

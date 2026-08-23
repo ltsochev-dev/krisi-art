@@ -16,12 +16,17 @@ import type { Media } from '@/payload-types'
  */
 export const seedMedia = async ({
   alt = 'Test image',
+  // Deliberately undefaulted. Omitting it sends no value, so the collection's
+  // own `false` default applies — which is how a test asserts the readiness
+  // gate. Pass `enabled: true` for an image that is meant to render.
+  enabled,
   height = 1200,
   name,
   payload,
   width = 1600,
 }: {
   alt?: string
+  enabled?: boolean
   height?: number
   name: string
   payload: Payload
@@ -40,7 +45,7 @@ export const seedMedia = async ({
 
   return await payload.create({
     collection: 'media',
-    data: { alt },
+    data: { alt, enabled },
     file: {
       data,
       mimetype: 'image/png',

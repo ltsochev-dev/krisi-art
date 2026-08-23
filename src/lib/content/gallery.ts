@@ -65,8 +65,16 @@ export const isPopulated = <T extends { id: number }>(
   value: null | number | T | undefined,
 ): value is T => typeof value === 'object' && value !== null
 
+/**
+ * Projects a populated media doc into the shape the frontend renders.
+ *
+ * A disabled image is treated exactly like a missing one, so every caller that
+ * already handles `null` — the hero, the about grid, the gallery — hides it for
+ * free. This is the single chokepoint for `media.enabled`: nothing renders an
+ * image without going through here.
+ */
 export const toGalleryImage = (media: Media | null | number | undefined): GalleryImage | null => {
-  if (!isPopulated(media)) {
+  if (!isPopulated(media) || !media.enabled) {
     return null
   }
 
@@ -163,7 +171,14 @@ export const findGalleryArtworks = async ({
     // asserts the resulting order.
     sort: ['album.sortOrder', 'sortOrder', 'title'],
     where: {
-      and: [{ published: { equals: true } }, { album: { in: albums.map((album) => album.id) } }],
+      and: [
+        { published: { equals: true } },
+        { album: { in: albums.map((album) => album.id) } },
+        // Filtered in the query rather than dropped from `result.docs`, so
+        // `totalDocs` and `hasNextPage` stay honest — post-filtering would leave
+        // short pages and a page count that promises artworks it cannot deliver.
+        { 'image.enabled': { equals: true } },
+      ],
     },
   })
 
