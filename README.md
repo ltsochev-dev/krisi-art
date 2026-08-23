@@ -1,67 +1,165 @@
-# Payload Blank Template
+# Kristina Kostova Personal Portfolio Website
 
-This template comes configured with the bare minimum to get started on anything you need.
+The portfolio site for artist Kristina Kostova: a public gallery and contact page
+on the front, and a [Payload CMS](https://payloadcms.com) admin panel behind AWS
+Cognito for managing albums, artworks and page content.
 
-## Quick start
+Built on Next.js 16 (App Router) + Payload 3, SQLite for data, S3 for media and
+Resend for transactional email. It deploys as a single standalone container.
 
-This template can be deployed directly from our Cloud hosting and it will setup MongoDB and cloud S3 object storage for media.
+## Stack
 
-## Quick Start - local setup
+| Concern     | Choice                                                      |
+| ----------- | ----------------------------------------------------------- |
+| Framework   | Next.js 16 (App Router, `output: 'standalone'`)             |
+| CMS         | Payload 3 (`@payloadcms/next`), Lexical rich text            |
+| Database    | SQLite (`@payloadcms/db-sqlite`)                             |
+| Media       | S3 (`@payloadcms/storage-s3`), local disk as fallback        |
+| Auth        | AWS Cognito Hosted UI (OIDC + PKCE) — no local passwords     |
+| Email       | Resend (`@payloadcms/email-resend`)                          |
+| Tests       | Vitest (integration), Playwright (e2e)                       |
+| Node / pkg  | Node ≥ 20.9, pnpm 11                                         |
 
-To spin up this template locally, follow these steps:
+## Getting started
 
-### Clone
+```bash
+cp .env.example .env      # then fill in the values — see below
+pnpm install
+pnpm dev                  # http://localhost:3000
+```
 
-After you click the `Deploy` button above, you'll want to have standalone copy of this repo on your machine. If you've already cloned this repo, skip to [Development](#development).
+At minimum you need `DATABASE_URL` and `PAYLOAD_SECRET`. Without S3 credentials
+uploads fall to local disk, and without `RESEND_API_KEY` emails are logged
+instead of sent — so a fresh clone runs with no AWS account.
 
-### Development
+Signing in, however, does require Cognito: Payload's local login strategy is
+disabled outright (`/api/users/login`, forgot/reset password, verify and
+create-first-user all reject), and the admin panel's only entry point is the
+Cognito button. See [Authentication](#authentication).
 
-1. First [clone the repo](#clone) if you have not done so already
-2. `cd my-project && cp .env.example .env` to copy the example environment variables. You'll need to add the `MONGODB_URL` from your Cloud project to your `.env` if you want to use S3 storage and the MongoDB database that was created for you.
+`.env.example` documents every variable, including the Cognito app client setup
+and the optional S3-compatible endpoint overrides.
 
-3. `pnpm install && pnpm dev` to install dependencies and start the dev server
-4. open `http://localhost:3000` to open the app in your browser
+## Scripts
 
-That's it! Changes made in `./src` will be reflected in your app. Follow the on-screen instructions to login and create your first admin user. Then check out [Production](#production) once you're ready to build and serve your app, and [Deployment](#deployment) when you're ready to go live.
+| Command             | What it does                                              |
+| ------------------- | --------------------------------------------------------- |
+| `pnpm dev`          | Dev server. `pnpm devsafe` clears `.next` first.           |
+| `pnpm build`        | Production build (standalone output).                      |
+| `pnpm start`        | Serve the production build.                                |
+| `pnpm lint`         | ESLint.                                                    |
+| `pnpm test:int`     | Vitest integration tests (`tests/int`).                    |
+| `pnpm test:e2e`     | Playwright e2e tests (`tests/e2e`).                        |
+| `pnpm test`         | Both suites.                                               |
+| `pnpm generate:types` | Regenerate `src/payload-types.ts` after schema changes.  |
+| `pnpm generate:importmap` | Rebuild the admin import map after adding components. |
+| `pnpm payload`      | Payload CLI (e.g. `pnpm payload migrate:create <name>`).   |
+| `pnpm seed:media <dir>` | Bulk-import an album folder tree (`--dry-run` supported). |
 
-#### Docker (Optional)
+## Content model
 
-If you prefer to use Docker for local development instead of a local MongoDB instance, the provided docker-compose.yml file can be used.
+**Collections**
 
-To do so, follow these steps:
+- **Albums** — gallery groupings; ordered, publishable, one flagged `isDefault`
+  as the fallback for artworks with no home. It is created automatically on boot.
+- **Artworks** — an image plus title, year, medium, dimensions, description and
+  tags. Always belongs to an album.
+- **Tags** — free-form labels on artworks.
+- **Media** — uploads with `thumbnail`/`card`/`tablet`/`hero` sizes, alt text and
+  caption. The `enabled` flag gates whether an image is publicly visible.
+- **Contact submissions** — the contact form inbox, with delivery status and
+  the error from a failed send. Submissions are stored whether or not email works.
+- **Users** — mirrors of Cognito identities (`cognitoSub`, `roles`). Not editable
+  as an identity source; the next login overwrites the mirrored fields.
 
-- Modify the `MONGODB_URL` in your `.env` file to `mongodb://127.0.0.1/<dbname>`
-- Modify the `docker-compose.yml` file's `MONGODB_URL` to match the above `<dbname>`
-- Run `docker-compose up` to start the database, optionally pass `-d` to run in the background.
+**Globals** — `Homepage` (hero, gallery album picker, about section, SEO),
+`ContactPage` (copy, contact details, notification recipients) and
+`SiteSettings` (site name, logo, nav, socials, footer, SEO defaults).
 
 ## How it works
 
-The Payload config is tailored specifically to the needs of most websites. It is pre-configured in the following ways:
+**Reads and caching.** The frontend never talks to Payload over HTTP. Pages call
+`@/lib/content/queries`, which wraps the Local API in tagged `unstable_cache`
+entries; the write-side hooks in `@/lib/hooks/revalidate` drop the matching tags
+on every admin edit. Bulk operations can set `req.context.disableRevalidate` and
+invalidate once at the end.
 
-### Collections
+**Gallery filtering.** `GET /api/artworks/gallery?albums=…&limit=…&page=…` is a
+Payload endpoint mounted on the `artworks` collection (the `/api/*` namespace
+already belongs to Payload's catch-all route). It is public, published-only and
+user-agnostic, which is what makes it cacheable.
 
-See the [Collections](https://payloadcms.com/docs/configuration/collections) docs for details on how to extend this functionality.
+**Media delivery.** Files are served through `/api/media/file/...` and streamed
+from the bucket by the storage plugin, so no S3 URL is ever exposed and
+`next.config.ts` needs no `images.remotePatterns` entry.
 
-- #### Users (Authentication)
+**GraphQL** is disabled — only the Local API and REST are used.
 
-  Users are auth-enabled collections that have access to the admin panel.
+**Contact form.** A server action with hand-rolled validation (`@/lib/validation/contact`), a honeypot field and
+an in-memory sliding-window rate limiter (`@/lib/rate-limit`). The limiter is
+per-process and deliberately so: this deploys as a single container. Recipients
+come from *Settings → Contact Page → Recipients*, falling back to
+`CONTACT_NOTIFY_EMAIL` and then to `RESEND_FROM_ADDRESS`.
 
-  For additional help, see the official [Auth Example](https://github.com/payloadcms/payload/tree/3.x/examples/auth) or the [Authentication](https://payloadcms.com/docs/authentication/overview#authentication-overview) docs.
+## Authentication
 
-- #### Media
+Cognito Hosted UI is the only identity provider. The flow lives in
+`src/lib/auth/cognito` (`config`, `oidc`, `session`, `state`) with routes under
+`src/app/(payload)/api/auth/cognito/{login,callback,logout}`.
 
-  This is the uploads enabled collection. It features pre-configured sizes, focal point and manual resizing to help you manage your pictures.
+- Authorization code grant with PKCE; works with public or confidential clients.
+- Cognito **groups map to Payload roles** — `COGNITO_ADMIN_GROUP` → `admin`,
+  `COGNITO_EDITOR_GROUP` → `editor`. Membership in neither denies access and
+  creates no local user.
+- Any recognised role gets into the admin panel; `admin` is required for the
+  privileged operations in `src/lib/auth/access.ts`.
+- `next.config.ts` redirects `/admin/logout` and `/admin/logout-inactivity` to
+  the Cognito logout route, so signing out ends the Hosted UI session too — not
+  just the local cookie.
 
-### Docker
+App client configuration (callback/sign-out URLs, scopes) is spelled out in
+`.env.example`.
 
-Alternatively, you can use [Docker](https://www.docker.com) to spin up this template locally. To do so, follow these steps:
+## Migrations
 
-1. Follow [steps 1 and 2 from above](#development), the docker-compose file will automatically use the `.env` file in your project root
-1. Next run `docker-compose up`
-1. Follow [steps 4 and 5 from above](#development) to login and create your first admin user
+Migrations live in `src/migrations` and are imported statically into
+`payload.config.ts` as `db.prodMigrations`, so they run on boot **in production
+only**. This is deliberate: `output: 'standalone'` traces only what `server.js`
+imports, which excludes the Payload CLI, so `payload migrate` is not available in
+the deployed image. Re-running is a no-op.
 
-That's it! The Docker instance will help you get up and running quickly while also standardizing the development environment across your teams.
+Create one with:
 
-## Questions
+```bash
+pnpm payload migrate:create <name>
+```
 
-If you have any issues or questions, reach out to us on [Discord](https://discord.com/invite/payload) or start a [GitHub discussion](https://github.com/payloadcms/payload/discussions).
+Two caveats worth knowing:
+
+- SQLite has a single writer, hence a single replica. If the database ever
+  changes to one that allows more, move migrations back out into a separate step
+  so concurrent boots cannot race.
+- Never seed a deployed volume from a development database file. A schema-pushed
+  database carries a `batch: -1` row in `payload-migrations`, and `migrate()`
+  answers that with an interactive prompt that exits zero — having run nothing —
+  when there is no TTY.
+
+## Testing
+
+```bash
+pnpm test:int    # Vitest — API, Cognito, content and rate-limit suites
+pnpm test:e2e    # Playwright — admin panel and frontend
+```
+
+Integration tests run against SQLite with no AWS credentials; helpers for seeding
+users and media live in `tests/helpers`.
+
+## Deployment
+
+The `Dockerfile` builds the standalone Next.js output into a slim runtime image.
+Provide the environment from `.env.example`, mount a volume for the SQLite file
+and point `APP_URL` at the public origin a browser actually hits — the Cognito
+redirect and sign-out URLs are derived from it.
+
+> `docker-compose.yml` is a leftover from the Payload starter template and still
+> references MongoDB. It does not match this project's SQLite setup.
