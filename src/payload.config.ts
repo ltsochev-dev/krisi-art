@@ -1,13 +1,23 @@
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
 import { resendAdapter } from '@payloadcms/email-resend'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
-import { Users } from './collections/Users'
+import { Albums } from './collections/Albums'
+import { Artworks } from './collections/Artworks'
+import { ContactSubmissions } from './collections/ContactSubmissions'
 import { Media } from './collections/Media'
+import { Tags } from './collections/Tags'
+import { Users } from './collections/Users'
+import { ContactPage } from './globals/ContactPage'
+import { Homepage } from './globals/Homepage'
+import { SiteSettings } from './globals/SiteSettings'
+import { getS3Config } from './lib/aws/s3'
+import { ensureDefaultAlbum } from './lib/content/default-album'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -26,6 +36,47 @@ const email = process.env.RESEND_API_KEY
     })
   : undefined
 
+/**
+ * Uploads go to S3 whenever a bucket is configured; otherwise Payload keeps them
+ * on local disk so a fresh clone and the integration tests work without AWS
+ * credentials. `getS3Config` (which also serves the presigned-URL helpers) is the
+ * single place env parsing happens, but it throws on missing values — hence the
+ * guard before calling it.
+ *
+ * Files are still served through `/api/media/file/...`; the plugin streams them
+ * from the bucket rather than exposing S3 URLs, which is why `next.config.ts`
+ * needs no `images.remotePatterns` entry.
+ */
+const storage = process.env.S3_BUCKET?.trim()
+  ? (() => {
+      const { bucket, endpoint, forcePathStyle, region } = getS3Config()
+      const accessKeyId = process.env.AWS_ACCESS_KEY_ID?.trim()
+      const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY?.trim()
+
+      return s3Storage({
+        bucket,
+        collections: { media: true },
+        config: {
+          // Omitted when absent so the default AWS provider chain still applies.
+          ...(accessKeyId && secretAccessKey
+            ? {
+                credentials: {
+                  accessKeyId,
+                  secretAccessKey,
+                  ...(process.env.AWS_SESSION_TOKEN?.trim()
+                    ? { sessionToken: process.env.AWS_SESSION_TOKEN.trim() }
+                    : {}),
+                },
+              }
+            : {}),
+          // Only for S3-compatible providers (MinIO, R2, Spaces).
+          ...(endpoint ? { endpoint, forcePathStyle } : {}),
+          region,
+        },
+      })
+    })()
+  : undefined
+
 export default buildConfig({
   admin: {
     components: {
@@ -41,7 +92,8 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media],
+  collections: [Albums, Artworks, Tags, Media, ContactSubmissions, Users],
+  globals: [Homepage, ContactPage, SiteSettings],
   // The app only talks to Payload through the Local API and REST, so the
   // GraphQL endpoint and its playground stay off.
   graphQL: {
@@ -49,6 +101,18 @@ export default buildConfig({
   },
   editor: lexicalEditor(),
   email,
+  /**
+   * Artworks require an album, so the fallback album has to exist. Failing here
+   * would take the whole app down, and `getDefaultAlbumId` creates it lazily on
+   * first use anyway — so log and carry on.
+   */
+  onInit: async (payload) => {
+    try {
+      await ensureDefaultAlbum({ payload })
+    } catch (error) {
+      payload.logger.error({ err: error }, 'Could not ensure the default album exists.')
+    }
+  },
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
@@ -59,5 +123,5 @@ export default buildConfig({
     },
   }),
   sharp,
-  plugins: [],
+  plugins: storage ? [storage] : [],
 })

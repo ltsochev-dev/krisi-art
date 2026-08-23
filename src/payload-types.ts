@@ -67,17 +67,29 @@ export interface Config {
   };
   blocks: {};
   collections: {
-    users: User;
+    albums: Album;
+    artworks: Artwork;
+    tags: Tag;
     media: Media;
+    'contact-submissions': ContactSubmission;
+    users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
   };
-  collectionsJoins: {};
+  collectionsJoins: {
+    albums: {
+      artworks: 'artworks';
+    };
+  };
   collectionsSelect: {
-    users: UsersSelect<false> | UsersSelect<true>;
+    albums: AlbumsSelect<false> | AlbumsSelect<true>;
+    artworks: ArtworksSelect<false> | ArtworksSelect<true>;
+    tags: TagsSelect<false> | TagsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    'contact-submissions': ContactSubmissionsSelect<false> | ContactSubmissionsSelect<true>;
+    users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -87,8 +99,16 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    homepage: Homepage;
+    'contact-page': ContactPage;
+    'site-settings': SiteSetting;
+  };
+  globalsSelect: {
+    homepage: HomepageSelect<false> | HomepageSelect<true>;
+    'contact-page': ContactPageSelect<false> | ContactPageSelect<true>;
+    'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+  };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
@@ -116,6 +136,182 @@ export interface UserAuthOperations {
     email: string;
     password: string;
   };
+}
+/**
+ * Groups of artworks. Albums become the filter chips on the homepage gallery; the order here is the order of the chips.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "albums".
+ */
+export interface Album {
+  id: number;
+  title: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  description?: string | null;
+  /**
+   * Lower numbers come first.
+   */
+  sortOrder: number;
+  /**
+   * Unpublished albums are invisible to the public API.
+   */
+  published?: boolean | null;
+  /**
+   * Marks the fallback album that artworks land in. Cannot be deleted.
+   */
+  isDefault?: boolean | null;
+  /**
+   * Artworks filed into this album, in display order.
+   */
+  artworks?: {
+    docs?: (number | Artwork)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * One row per piece. The image itself lives in Media — an artwork wraps it with the album, ordering and caption metadata the gallery needs.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "artworks".
+ */
+export interface Artwork {
+  id: number;
+  title: string;
+  image: number | Media;
+  /**
+   * Defaults to Uncategorized.
+   */
+  album: number | Album;
+  /**
+   * Position within the album. Lower numbers come first.
+   */
+  sortOrder: number;
+  /**
+   * Unpublished artworks are invisible to the public API.
+   */
+  published?: boolean | null;
+  year?: number | null;
+  medium?: string | null;
+  dimensions?: string | null;
+  /**
+   * Optional story behind the piece.
+   */
+  description?: string | null;
+  /**
+   * Cross-album labels, independent of which album the piece is filed under.
+   */
+  tags?: (number | Tag)[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  /**
+   * Describe the image for screen readers and search engines.
+   */
+  alt: string;
+  caption?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  sizes?: {
+    thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    card?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    tablet?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    hero?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
+}
+/**
+ * Cross-album labels for artworks, e.g. "oil", "portrait".
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tags".
+ */
+export interface Tag {
+  id: number;
+  name: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Messages sent through the contact form. Read-only apart from the status.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-submissions".
+ */
+export interface ContactSubmission {
+  id: number;
+  name: string;
+  email: string;
+  subject?: string | null;
+  message: string;
+  /**
+   * The only field staff are meant to change.
+   */
+  status: 'new' | 'read' | 'replied' | 'archived';
+  /**
+   * Whether the notification email left the building.
+   */
+  emailSent?: boolean | null;
+  emailError?: string | null;
+  /**
+   * Captured for spam triage only.
+   */
+  userAgent?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -159,25 +355,6 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: number;
-  alt: string;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -201,12 +378,28 @@ export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
-        relationTo: 'users';
-        value: number | User;
+        relationTo: 'albums';
+        value: number | Album;
+      } | null)
+    | ({
+        relationTo: 'artworks';
+        value: number | Artwork;
+      } | null)
+    | ({
+        relationTo: 'tags';
+        value: number | Tag;
       } | null)
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'contact-submissions';
+        value: number | ContactSubmission;
+      } | null)
+    | ({
+        relationTo: 'users';
+        value: number | User;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -252,6 +445,130 @@ export interface PayloadMigration {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "albums_select".
+ */
+export interface AlbumsSelect<T extends boolean = true> {
+  title?: T;
+  generateSlug?: T;
+  slug?: T;
+  description?: T;
+  sortOrder?: T;
+  published?: T;
+  isDefault?: T;
+  artworks?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "artworks_select".
+ */
+export interface ArtworksSelect<T extends boolean = true> {
+  title?: T;
+  image?: T;
+  album?: T;
+  sortOrder?: T;
+  published?: T;
+  year?: T;
+  medium?: T;
+  dimensions?: T;
+  description?: T;
+  tags?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tags_select".
+ */
+export interface TagsSelect<T extends boolean = true> {
+  name?: T;
+  generateSlug?: T;
+  slug?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media_select".
+ */
+export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  caption?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        card?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        tablet?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        hero?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-submissions_select".
+ */
+export interface ContactSubmissionsSelect<T extends boolean = true> {
+  name?: T;
+  email?: T;
+  subject?: T;
+  message?: T;
+  status?: T;
+  emailSent?: T;
+  emailError?: T;
+  userAgent?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
@@ -274,24 +591,6 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
- */
-export interface MediaSelect<T extends boolean = true> {
-  alt?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -332,6 +631,247 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * Everything rendered on the landing page.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "homepage".
+ */
+export interface Homepage {
+  id: number;
+  heading: string;
+  subheading?: string | null;
+  /**
+   * Optional. Leave empty for a text-only hero.
+   */
+  image?: (number | null) | Media;
+  sectionTitle: string;
+  /**
+   * Albums offered as chips, in order. At least one row should start selected, or the grid loads empty.
+   */
+  albums?:
+    | {
+        album: number | Album;
+        /**
+         * Chip is switched on when the page first loads.
+         */
+        selectedByDefault?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * How many artworks to pull from each selected album on the homepage preview.
+   */
+  imagesPerAlbum: number;
+  aboutHeading: string;
+  /**
+   * Plain text. Blank lines separate paragraphs.
+   */
+  aboutBody?: string | null;
+  /**
+   * The bullet points beside the about text.
+   */
+  stats?:
+    | {
+        value: string;
+        label: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Portraits, studio shots, hobbies. Four reads best.
+   */
+  aboutImages?:
+    | {
+        image: number | Media;
+        caption?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Falls back to the site name when empty.
+   */
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  ogImage?: (number | null) | Media;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * Contact page copy, published contact details, and who gets notified.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-page".
+ */
+export interface ContactPage {
+  id: number;
+  heading: string;
+  intro?: string | null;
+  /**
+   * Shown on the page. Not necessarily where the form sends.
+   */
+  displayEmail?: string | null;
+  phone?: string | null;
+  location?: string | null;
+  /**
+   * Short line above the form fields.
+   */
+  formIntro?: string | null;
+  successMessage: string;
+  /**
+   * Where submissions are emailed. Falls back to RESEND_FROM_ADDRESS when empty — the message is still saved either way.
+   */
+  notifyRecipients?:
+    | {
+        email: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * Site-wide chrome: name, navigation, socials, footer and SEO fallbacks.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-settings".
+ */
+export interface SiteSetting {
+  id: number;
+  siteName: string;
+  tagline?: string | null;
+  logo?: (number | null) | Media;
+  /**
+   * Navbar links, in order.
+   */
+  nav?:
+    | {
+        label: string;
+        /**
+         * A path (/contact), a hash (/#about) or an absolute URL.
+         */
+        href: string;
+        id?: string | null;
+      }[]
+    | null;
+  socials?:
+    | {
+        platform: 'instagram' | 'facebook' | 'behance' | 'linkedin' | 'pinterest' | 'tiktok' | 'youtube' | 'other';
+        url: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Shown beside the copyright line.
+   */
+  footerText?: string | null;
+  /**
+   * Used wherever a page does not set its own.
+   */
+  seo?: {
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    ogImage?: (number | null) | Media;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "homepage_select".
+ */
+export interface HomepageSelect<T extends boolean = true> {
+  heading?: T;
+  subheading?: T;
+  image?: T;
+  sectionTitle?: T;
+  albums?:
+    | T
+    | {
+        album?: T;
+        selectedByDefault?: T;
+        id?: T;
+      };
+  imagesPerAlbum?: T;
+  aboutHeading?: T;
+  aboutBody?: T;
+  stats?:
+    | T
+    | {
+        value?: T;
+        label?: T;
+        id?: T;
+      };
+  aboutImages?:
+    | T
+    | {
+        image?: T;
+        caption?: T;
+        id?: T;
+      };
+  metaTitle?: T;
+  metaDescription?: T;
+  ogImage?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-page_select".
+ */
+export interface ContactPageSelect<T extends boolean = true> {
+  heading?: T;
+  intro?: T;
+  displayEmail?: T;
+  phone?: T;
+  location?: T;
+  formIntro?: T;
+  successMessage?: T;
+  notifyRecipients?:
+    | T
+    | {
+        email?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-settings_select".
+ */
+export interface SiteSettingsSelect<T extends boolean = true> {
+  siteName?: T;
+  tagline?: T;
+  logo?: T;
+  nav?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        id?: T;
+      };
+  socials?:
+    | T
+    | {
+        platform?: T;
+        url?: T;
+        id?: T;
+      };
+  footerText?: T;
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
+        ogImage?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
