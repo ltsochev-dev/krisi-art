@@ -1,0 +1,182 @@
+@import 'tailwindcss';
+
+/* v3 `plugins: [require('tailwindcss-animate')]`. That plugin is v3-only; this
+   is its v4 successor — same utility names (`animate-in`, `fade-in-0`,
+   `slide-in-from-bottom-4`, …), pure CSS instead of a JS plugin. */
+@import 'tw-animate-css';
+
+/**
+ * Replaces the v3 `content` globs (`./pages`, `./components`, `./app`,
+ * `./src`). Tailwind v4 detects classes by scanning the source tree, and for
+ * the PostCSS plugin that scan is rooted at this file's directory — which would
+ * miss anything the frontend imports from outside `(frontend)`. Point it at
+ * `src/` instead, which is where this project keeps all four of those trees.
+ *
+ * The Payload admin is excluded on purpose: its views never load this
+ * stylesheet (they have their own root layout and SCSS), so class-looking
+ * strings in there would only generate utilities nothing can use.
+ */
+@source '../../**/*.{ts,tsx}';
+@source not '../(payload)/**';
+@source not '../../components/admin/**';
+
+/* v3 `darkMode: ['class']`. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/**
+ * v3 `theme.extend` — in v4 the theme *is* CSS custom properties, and each
+ * namespace prefix (`--color-*`, `--font-*`, `--radius-*`, `--animate-*`) is
+ * what tells Tailwind which utilities to generate from them. A bare `@theme`
+ * extends the defaults, so `--color-gold` adds `bg-gold`/`text-gold`/… next to
+ * the built-in palette, while `--font-sans` and the three `--radius-*` keys
+ * shadow their defaults, exactly as `extend` did.
+ *
+ * The `hsl(var(--x))` indirection is carried over verbatim: these still expect
+ * the bare HSL triplets (`--gold: 41 52% 55%` and friends) that the v3
+ * stylesheet defined on `:root` and `.dark`. Those definitions are NOT in this
+ * file yet — bring them over unchanged and every token below resolves.
+ */
+@theme {
+  /* The families themselves come from `next/font` (see `@/lib/fonts`), which
+     hands each one a generated `--font-*-family` variable that the frontend
+     root layout puts on `<html>`. The literal names the v3 stylesheet used are
+     kept as the first fallback so these still resolve if that class is ever
+     missing. */
+  --font-serif: var(--font-serif-family), 'Cormorant Garamond', Georgia, serif;
+  --font-sans: var(--font-sans-family), 'Inter', system-ui, sans-serif;
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  /* v3 `DEFAULT` is the bare key: `gold.DEFAULT` -> `--color-gold` -> `bg-gold`. */
+  --color-gold: hsl(var(--gold));
+  --color-gold-light: hsl(var(--gold-light));
+
+  --color-cream: hsl(var(--cream));
+
+  --color-charcoal: hsl(var(--charcoal));
+  --color-charcoal-light: hsl(var(--charcoal-light));
+  --color-charcoal-deep: hsl(var(--charcoal-deep));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* v3 `keyframes` + `animation`. Keyframes declared inside `@theme` are only
+     emitted when the matching `animate-*` utility is actually used.
+
+     `tw-animate-css` happens to ship its own `accordion-down`/`accordion-up`
+     (wired to more component libraries than Radix, and modifier-aware via
+     `--tw-duration`/`--tw-ease`). These come later, so they win — which keeps
+     the v3 behaviour. Delete the two accordion pairs below to take that
+     package's richer versions instead. */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.8s ease-out forwards;
+  --animate-fade-in-slow: fade-in-slow 1.2s ease-out forwards;
+  --animate-slide-up: slide-up 0.6s ease-out forwards;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in-slow {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/**
+ * v3 `theme.container` (`center`, `padding`, `screens`) has no config surface in
+ * v4 — the container is a plain utility now. Note that redefining it *merges*
+ * with the built-in one rather than replacing it, so the stock per-breakpoint
+ * `max-width`es are still in the rule above these declarations; the reset below
+ * is what cancels them (same specificity, later wins).
+ *
+ * The result is exactly what the v3 config compiled to: full width, auto
+ * margins, 2rem of inline padding, and a single cap of 1400px from 1400px up —
+ * no max-width at any smaller breakpoint.
+ */
+@utility container {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 2rem;
+  max-width: none;
+
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
