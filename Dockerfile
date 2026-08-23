@@ -55,6 +55,12 @@ RUN adduser --system --uid 1001 nextjs
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
+# Mount points for the SQLite file and the local-disk upload fallback. They have
+# to exist here, owned by the runtime user: Docker seeds a named volume from the
+# image directory it covers, ownership included, and creates it root-owned when
+# there is nothing to copy — which the app cannot write to.
+RUN mkdir -p database media && chown nextjs:nodejs database media
+
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

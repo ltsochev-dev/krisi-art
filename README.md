@@ -161,5 +161,10 @@ Provide the environment from `.env.example`, mount a volume for the SQLite file
 and point `APP_URL` at the public origin a browser actually hits — the Cognito
 redirect and sign-out URLs are derived from it.
 
-> `docker-compose.yml` is a leftover from the Payload starter template and still
-> references MongoDB. It does not match this project's SQLite setup.
+`docker-compose.yml` runs that image as it is deployed — a single service, no
+database container, with named volumes for the SQLite file (`/app/database`) and
+the local-disk upload fallback (`/app/media`):
+
+```bash
+docker compose up --build
+```

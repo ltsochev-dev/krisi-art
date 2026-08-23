@@ -1,43 +1,43 @@
-version: '3'
+# Single standalone container — the same image the VPS runs. SQLite means one
+# writer, so there is exactly one replica and no database service to link.
+#
+#   docker compose up --build
+#
+# Migrations run on boot (NODE_ENV=production is baked into the runner stage),
+# so the volume is migrated in place on every deploy. Never seed the `database`
+# volume from a development SQLite file: a schema-pushed database carries a
+# `batch: -1` row that makes `migrate()` prompt, and with no TTY that exits zero
+# having run nothing.
 
 services:
-  payload:
-    image: node:20-alpine
+  app:
+    build: .
+    restart: unless-stopped
     ports:
       - '3000:3000'
-    volumes:
-      - .:/home/node/app
-      - node_modules:/home/node/app/node_modules
-    working_dir: /home/node/app/
-    command: sh -c "corepack enable && corepack prepare pnpm@latest --activate && pnpm install && pnpm dev"
-    depends_on:
-      - mongo
-      # - postgres
     env_file:
       - .env
-
-  # Ensure your DATABASE_URL uses 'mongo' as the hostname ie. mongodb://mongo/my-db-name
-  mongo:
-    image: mongo:latest
-    ports:
-      - '27017:27017'
-    command:
-      - --storageEngine=wiredTiger
+    # DATABASE_URL is relative to the app's working directory (/app), so the
+    # default `file:./database/krisi-dba.sqlite` lands in the volume below.
+    # APP_URL must be the origin a browser actually hits — the Cognito redirect
+    # and sign-out URLs are derived from it and must match the app client.
     volumes:
-      - data:/data/db
-    logging:
-      driver: none
-
-  # Uncomment the following to use postgres
-  # postgres:
-  #   restart: always
-  #   image: postgres:latest
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
+      - database:/app/database
+      # Only used when S3_BUCKET is unset, when uploads fall back to local disk.
+      - media:/app/media
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/access').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
-  data:
-  # pgdata:
-  node_modules:
+  database:
+  media:
