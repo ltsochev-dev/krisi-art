@@ -68,8 +68,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Footer
           siteName={settings.siteName}
           footerText={settings.footerText}
-          privacyUrl="#"
-          termsUrl="#"
+          privacyUrl="/privacy"
+          termsUrl="/terms"
         />
       </body>
     </html>

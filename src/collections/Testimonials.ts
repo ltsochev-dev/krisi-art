@@ -1,4 +1,4 @@
-import { admins, editors, publishedOrEditor } from '@/lib/auth/access'
+import { admins, editors, published } from '@/lib/auth/access'
 import { CACHE_TAGS } from '@/lib/content/cache-tags'
 import { revalidateCollection, revalidateCollectionDelete } from '@/lib/hooks/revalidate'
 import { CollectionConfig } from 'payload'
@@ -8,7 +8,7 @@ export const Testimonials: CollectionConfig = {
   access: {
     create: editors,
     delete: admins,
-    read: publishedOrEditor,
+    read: published,
     update: editors,
   },
   admin: {

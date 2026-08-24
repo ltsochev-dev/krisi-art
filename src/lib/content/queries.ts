@@ -19,7 +19,7 @@
 import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 
-import type { Album, ContactPage, Homepage, SiteSetting, Testimonial } from '@/payload-types'
+import type { Album, ContactPage, Homepage, Page, SiteSetting, Testimonial } from '@/payload-types'
 import type { GalleryImage, GalleryPage } from '@/lib/content/gallery'
 
 import { CACHE_TAGS } from '@/lib/content/cache-tags'
@@ -143,6 +143,34 @@ export const getHeroSection = async (): Promise<HeroSection> => {
     subheading: homepage.subheading ?? null,
   }
 }
+
+// --- Pages -----------------------------------------------------------------
+
+/**
+ * A standalone page by slug, or `null` when there is no published page there.
+ *
+ * The `unstable_cache` key includes the slug, so every page gets its own entry
+ * and they all carry the same tag — one edit in the admin drops the lot, which is
+ * cheap for a handful of copy pages.
+ */
+export const getPage = unstable_cache(
+  async (slug: string): Promise<null | Page> => {
+    const payload = await payloadInstance()
+
+    const { docs } = await payload.find({
+      collection: 'pages',
+      depth: 0,
+      limit: 1,
+      overrideAccess: true,
+      pagination: false,
+      where: { and: [{ slug: { equals: slug } }, { published: { equals: true } }] },
+    })
+
+    return docs[0] ?? null
+  },
+  ['page'],
+  { tags: [CACHE_TAGS.pages] },
+)
 
 // --- Testimonials ----------------------------------------------------------
 

@@ -18,8 +18,10 @@ import { Homepage } from './globals/Homepage'
 import { SiteSettings } from './globals/SiteSettings'
 import { getS3Config } from './lib/aws/s3'
 import { ensureDefaultAlbum } from './lib/content/default-album'
+import { ensureLegalPages } from './lib/content/legal-pages'
 import { migrations } from './migrations'
 import { Testimonials } from './collections/Testimonials'
+import { Pages } from './collections/Pages'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -94,7 +96,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Albums, Artworks, Tags, Media, ContactSubmissions, Users, Testimonials],
+  collections: [Albums, Artworks, Tags, Media, ContactSubmissions, Users, Testimonials, Pages],
   globals: [Homepage, ContactPage, SiteSettings],
   // The app only talks to Payload through the Local API and REST, so the
   // GraphQL endpoint and its playground stay off.
@@ -107,12 +109,21 @@ export default buildConfig({
    * Artworks require an album, so the fallback album has to exist. Failing here
    * would take the whole app down, and `getDefaultAlbumId` creates it lazily on
    * first use anyway — so log and carry on.
+   *
+   * The legal pages are seeded on the same terms: a missing Terms or Privacy
+   * document is a broken footer link, not a reason to refuse to boot.
    */
   onInit: async (payload) => {
     try {
       await ensureDefaultAlbum({ payload })
     } catch (error) {
       payload.logger.error({ err: error }, 'Could not ensure the default album exists.')
+    }
+
+    try {
+      await ensureLegalPages({ payload })
+    } catch (error) {
+      payload.logger.error({ err: error }, 'Could not ensure the legal pages exist.')
     }
   },
   secret: process.env.PAYLOAD_SECRET || '',

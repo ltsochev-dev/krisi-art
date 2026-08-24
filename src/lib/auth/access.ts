@@ -35,3 +35,9 @@ export const publishedOrEditor: Access = ({ req: { user } }) => {
     },
   }
 }
+
+export const published: Access = () => ({
+  published: {
+    equals: true,
+  },
+})

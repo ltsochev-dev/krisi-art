@@ -4,6 +4,7 @@ import * as migration_20260824_094733_skills from './20260824_094733_skills'
 import * as migration_20260824_102718_contacts_fields from './20260824_102718_contacts_fields'
 import * as migration_20260824_113648_testimonials from './20260824_113648_testimonials'
 import * as migration_20260824_115206_testimonials_published from './20260824_115206_testimonials_published'
+import * as migration_20260824_123751_pages from './20260824_123751_pages'
 
 export const migrations = [
   {
@@ -35,5 +36,10 @@ export const migrations = [
     up: migration_20260824_115206_testimonials_published.up,
     down: migration_20260824_115206_testimonials_published.down,
     name: '20260824_115206_testimonials_published',
+  },
+  {
+    up: migration_20260824_123751_pages.up,
+    down: migration_20260824_123751_pages.down,
+    name: '20260824_123751_pages',
   },
 ]

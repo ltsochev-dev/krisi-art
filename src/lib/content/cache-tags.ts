@@ -10,6 +10,7 @@ export const CACHE_TAGS = {
   contactPage: 'contact-page',
   homepage: 'homepage',
   media: 'media',
+  pages: 'pages',
   siteSettings: 'site-settings',
   tags: 'tags',
   testimonials: 'testimonials',

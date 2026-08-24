@@ -347,4 +347,98 @@
   .section-divider {
     @apply mx-auto h-px w-16 bg-linear-to-r from-transparent via-primary to-transparent;
   }
+
+  /**
+   * Lexical output from the `pages` collection.
+   *
+   * Preflight resets heading sizes to `inherit` and strips list markers, so the
+   * editor's `h3` renders as body copy unless the scale is put back by hand —
+   * there is no `@tailwindcss/typography` in this project. Everything is scoped
+   * under `.rich-text` so it only ever applies to CMS prose, never to the
+   * hand-built components.
+   *
+   * `RichText`'s `className` prop *replaces* its default `payload-richtext`
+   * class rather than adding to it, so this class name is the whole contract —
+   * see `@payloadcms/richtext-lexical`'s converter component.
+   */
+  .rich-text {
+    @apply font-sans leading-relaxed text-muted-foreground;
+  }
+
+  /* Headings keep the serif family the base layer already gives them; what they
+     need back is size, weight-relative spacing and the brighter foreground. */
+  .rich-text h1 {
+    @apply mt-14 mb-5 font-serif text-3xl text-foreground md:text-4xl;
+  }
+
+  .rich-text h2 {
+    @apply mt-12 mb-4 font-serif text-2xl text-foreground md:text-3xl;
+  }
+
+  .rich-text h3 {
+    @apply mt-10 mb-3 font-serif text-xl text-foreground md:text-2xl;
+  }
+
+  .rich-text h4 {
+    @apply mt-8 mb-3 font-serif text-lg text-foreground;
+  }
+
+  /* Below h4 the serif scale runs out of room, so these become the same small
+     uppercase label the rest of the site uses for eyebrow text. */
+  .rich-text h5,
+  .rich-text h6 {
+    @apply mt-8 mb-2 font-sans text-sm tracking-widest text-foreground uppercase;
+  }
+
+  .rich-text p {
+    @apply my-6;
+  }
+
+  .rich-text ul {
+    @apply my-6 list-disc space-y-2 pl-6;
+  }
+
+  .rich-text ol {
+    @apply my-6 list-decimal space-y-2 pl-6;
+  }
+
+  .rich-text li::marker {
+    @apply text-primary;
+  }
+
+  .rich-text li > ul,
+  .rich-text li > ol {
+    @apply my-2;
+  }
+
+  .rich-text a {
+    @apply text-primary underline decoration-primary/40 underline-offset-4 transition-colors duration-300 hover:decoration-primary;
+  }
+
+  .rich-text strong {
+    @apply font-semibold text-foreground;
+  }
+
+  .rich-text blockquote {
+    @apply my-8 border-l-2 border-primary/50 pl-6 font-serif text-lg text-foreground italic;
+  }
+
+  .rich-text hr {
+    @apply my-10 border-border;
+  }
+
+  .rich-text code {
+    @apply rounded bg-card px-1.5 py-0.5 text-sm text-foreground;
+  }
+
+  /* Collapses the leading and trailing gap so the block sits flush with
+     whatever the page put around it. Both outrank the element rules above on
+     specificity, so they win regardless of source order. */
+  .rich-text > :first-child {
+    @apply mt-0;
+  }
+
+  .rich-text > :last-child {
+    @apply mb-0;
+  }
 }
