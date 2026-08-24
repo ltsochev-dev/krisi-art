@@ -1,17 +1,3 @@
-/**
- * Homepage — unstyled data preview.
- *
- * Everything here is read on the server through `@/lib/content/queries`, which
- * wraps the Payload Local API in tagged `unstable_cache` entries. No `fetch`, no
- * HTTP round-trip, no `getPayload()` in the component itself: the page asks for
- * the *projections* it renders (hero, about, gallery) and stays out of the
- * query details.
- *
- * The one client-side read is the album filter, which re-queries
- * `/api/artworks/gallery` as chips are toggled — see `./GalleryFilter`.
- */
-import React from 'react'
-
 import {
   getAboutSection,
   getHeroSection,
@@ -21,11 +7,11 @@ import {
   getTestimonials,
 } from '@/lib/content/queries'
 
-import { GalleryFilter } from './GalleryFilter'
 import Hero from '@/components/Hero'
 import Contact from '@/components/Contact'
 import Testimonials from '@/components/Testimonials'
 import About from '@/components/About'
+import PortfolioGrid from '@/components/PortfolioGrid'
 
 export default async function HomePage() {
   // Independent reads, so fire them together. The first four share the same
@@ -42,22 +28,12 @@ export default async function HomePage() {
   return (
     <>
       <Hero title={hero.heading} subtitle={hero.subheading ?? ''} skills={hero.skills} />
-      <hr />
-      <section id="work">
-        <h2>{homepage.sectionTitle}</h2>
-        <p>
-          <small>
-            {gallery.albums.length} album chip(s), {gallery.imagesPerAlbum} artwork(s) per album,{' '}
-            {gallery.initial.totalDocs} artwork(s) in the initial selection.
-          </small>
-        </p>
-        <GalleryFilter
-          albums={gallery.albums}
-          imagesPerAlbum={gallery.imagesPerAlbum}
-          initial={gallery.initial}
-        />
-      </section>
-      <hr />
+      <PortfolioGrid
+        title={gallery.heading}
+        subtitle={gallery.subheading}
+        albums={gallery.albums}
+        artworks={gallery.artworks}
+      />
       <About title={about.heading} stats={about.stats} images={about.images}>
         {(about.body ?? '')
           .split(/\n{2,}/)

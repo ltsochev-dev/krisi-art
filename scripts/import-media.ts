@@ -152,7 +152,6 @@ const importAlbum = async ({
   // Safe to resolve up front now that the folder is known to hold images, so a
   // folder of stray files still never leaves an empty album behind.
   const album = await resolveAlbum()
-  let sortOrder = 0
 
   for (const file of images) {
     const existingMedia = await findMediaByFilename(payload, file)
@@ -160,7 +159,6 @@ const importAlbum = async ({
     if (existingMedia && (await artworkExistsForMedia(payload, existingMedia.id))) {
       console.log(`    = ${file} (already imported)`)
       counts.skipped += 1
-      sortOrder += 1
       continue
     }
 
@@ -170,7 +168,6 @@ const importAlbum = async ({
       console.log(`    + ${file} -> "${title}"`)
       counts.media += existingMedia ? 0 : 1
       counts.artworks += 1
-      sortOrder += 1
       continue
     }
 
@@ -200,12 +197,13 @@ const importAlbum = async ({
     await payload.create({
       collection: 'artworks',
       context: { disableRevalidate: true },
-      data: { album: album.id, image: media.id, published: true, sortOrder, title },
+      // `artworks.orderable` appends each new row to the end of `_order`, and
+      // `images` is sorted, so insertion order is the display order.
+      data: { album: album.id, image: media.id, published: true, title },
       overrideAccess: true,
     })
 
     counts.artworks += 1
-    sortOrder += 1
 
     console.log(`    + ${file} -> "${title}"`)
   }
@@ -240,7 +238,7 @@ const main = async (): Promise<void> => {
   const directories = entries.filter((entry) => entry.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))
   const looseFiles = entries.filter((entry) => entry.isFile()).map((entry) => entry.name).sort()
 
-  for (const [index, directory] of directories.entries()) {
+  for (const directory of directories) {
     const albumTitle = toTitleCase(directory.name)
     // `slugify` strips everything that is not a word character, so a folder
     // named only in punctuation or a non-Latin script can reduce to nothing —
@@ -285,7 +283,7 @@ const main = async (): Promise<void> => {
           context: { disableRevalidate: true },
           // Published so the album can be offered as a homepage chip. Its
           // artworks stay invisible regardless until their media is enabled.
-          data: { published: true, slug: albumSlug, sortOrder: index, title: albumTitle },
+          data: { published: true, slug: albumSlug, title: albumTitle },
           overrideAccess: true,
         })
       },

@@ -142,13 +142,14 @@ export interface UserAuthOperations {
   };
 }
 /**
- * Groups of artworks. Albums become the filter chips on the homepage gallery; the order here is the order of the chips.
+ * Groups of artworks. Albums become the filter chips on the homepage gallery; drag the rows to reorder the chips.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "albums".
  */
 export interface Album {
   id: number;
+  _order?: string | null;
   title: string;
   /**
    * When enabled, the slug will auto-generate from the title field on save and autosave.
@@ -156,10 +157,6 @@ export interface Album {
   generateSlug?: boolean | null;
   slug: string;
   description?: string | null;
-  /**
-   * Lower numbers come first.
-   */
-  sortOrder: number;
   /**
    * Unpublished albums are invisible to the public API.
    */
@@ -169,7 +166,7 @@ export interface Album {
    */
   isDefault?: boolean | null;
   /**
-   * Artworks filed into this album, in display order.
+   * Artworks filed into this album. Drag the rows to set the order they appear in the gallery.
    */
   artworks?: {
     docs?: (number | Artwork)[];
@@ -180,23 +177,20 @@ export interface Album {
   createdAt: string;
 }
 /**
- * One row per piece. The image itself lives in Media — an artwork wraps it with the album, ordering and caption metadata the gallery needs.
+ * One row per piece. The image itself lives in Media — an artwork wraps it with the album and caption metadata the gallery needs. Order is set per album, on the album itself.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "artworks".
  */
 export interface Artwork {
   id: number;
+  _artworks_artworks_order?: string | null;
   title: string;
   image: number | Media;
   /**
    * Defaults to Uncategorized.
    */
   album: number | Album;
-  /**
-   * Position within the album. Lower numbers come first.
-   */
-  sortOrder: number;
   /**
    * Unpublished artworks are invisible to the public API.
    */
@@ -547,11 +541,11 @@ export interface PayloadMigration {
  * via the `definition` "albums_select".
  */
 export interface AlbumsSelect<T extends boolean = true> {
+  _order?: T;
   title?: T;
   generateSlug?: T;
   slug?: T;
   description?: T;
-  sortOrder?: T;
   published?: T;
   isDefault?: T;
   artworks?: T;
@@ -563,10 +557,10 @@ export interface AlbumsSelect<T extends boolean = true> {
  * via the `definition` "artworks_select".
  */
 export interface ArtworksSelect<T extends boolean = true> {
+  _artworks_artworks_order?: T;
   title?: T;
   image?: T;
   album?: T;
-  sortOrder?: T;
   published?: T;
   year?: T;
   medium?: T;
@@ -790,22 +784,22 @@ export interface Homepage {
     | null;
   sectionTitle: string;
   /**
-   * Albums offered as chips, in order. At least one row should start selected, or the grid loads empty.
+   * Plain text. Blank lines separate paragraphs.
+   */
+  sectionSubtitle?: string | null;
+  /**
+   * Albums offered as chips, in this order. The first row is the chip selected when the page loads; "All" sits at the end of the row.
    */
   albums?:
     | {
         album: number | Album;
         /**
-         * Chip is switched on when the page first loads.
+         * No longer used — the first album in this list is the one selected on load. Move an album to the top instead.
          */
         selectedByDefault?: boolean | null;
         id?: string | null;
       }[]
     | null;
-  /**
-   * How many artworks to pull from each selected album on the homepage preview.
-   */
-  imagesPerAlbum: number;
   aboutHeading: string;
   /**
    * Plain text. Blank lines separate paragraphs.
@@ -948,6 +942,7 @@ export interface HomepageSelect<T extends boolean = true> {
         id?: T;
       };
   sectionTitle?: T;
+  sectionSubtitle?: T;
   albums?:
     | T
     | {
@@ -955,7 +950,6 @@ export interface HomepageSelect<T extends boolean = true> {
         selectedByDefault?: T;
         id?: T;
       };
-  imagesPerAlbum?: T;
   aboutHeading?: T;
   aboutBody?: T;
   stats?:

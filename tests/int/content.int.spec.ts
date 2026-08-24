@@ -14,7 +14,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { seedMedia } from '../helpers/seedMedia'
 import config from '@/payload.config'
-import { findGalleryArtworks, findPublishedAlbumsBySlug, toGalleryImage } from '@/lib/content/gallery'
+import {
+  findGalleryArtworks,
+  findPublishedAlbumsBySlug,
+  takePerAlbum,
+  toGalleryImage,
+} from '@/lib/content/gallery'
 import { DEFAULT_ALBUM_SLUG, findDefaultAlbum } from '@/lib/content/default-album'
 import { validateContactInput } from '@/lib/validation/contact'
 import { CONTACT_LIMITS } from '@/lib/validation/contact'
@@ -36,15 +41,17 @@ describe('portfolio content', () => {
     media = await seedMedia({ enabled: true, name: `${PREFIX}-image`, payload })
     notReadyMedia = await seedMedia({ name: `${PREFIX}-not-ready`, payload })
 
+    // `albums.orderable` assigns `_order` on create, so creating `first` before
+    // `second` is what puts it earlier in the chip order.
     first = await payload.create({
       collection: 'albums',
-      data: { published: true, slug: `${PREFIX}-first`, sortOrder: 1, title: `${PREFIX} First` },
+      data: { published: true, slug: `${PREFIX}-first`, title: `${PREFIX} First` },
       overrideAccess: true,
     })
 
     second = await payload.create({
       collection: 'albums',
-      data: { published: true, slug: `${PREFIX}-second`, sortOrder: 2, title: `${PREFIX} Second` },
+      data: { published: true, slug: `${PREFIX}-second`, title: `${PREFIX} Second` },
       overrideAccess: true,
     })
   })
@@ -149,7 +156,7 @@ describe('portfolio content', () => {
         collection: 'artworks',
         // `album` is required, so omitting it is a type error by design — the
         // cast is the point of the test: the hook has to fill it in.
-        data: { image: media.id, sortOrder: 0, title: `${PREFIX} no album` } as never,
+        data: { image: media.id, title: `${PREFIX} no album` } as never,
         depth: 0,
         overrideAccess: true,
       })
@@ -165,7 +172,6 @@ describe('portfolio content', () => {
         data: {
           album: null as unknown as number,
           image: media.id,
-          sortOrder: 0,
           title: `${PREFIX} null album`,
         },
         depth: 0,
@@ -180,13 +186,13 @@ describe('portfolio content', () => {
     it('adopts the artworks of a deleted album', async () => {
       const doomed = await payload.create({
         collection: 'albums',
-        data: { slug: `${PREFIX}-doomed`, sortOrder: 5, title: `${PREFIX} Doomed` },
+        data: { slug: `${PREFIX}-doomed`, title: `${PREFIX} Doomed` },
         overrideAccess: true,
       })
 
       const artwork = await payload.create({
         collection: 'artworks',
-        data: { album: doomed.id, image: media.id, sortOrder: 0, title: `${PREFIX} orphan` },
+        data: { album: doomed.id, image: media.id, title: `${PREFIX} orphan` },
         depth: 0,
         overrideAccess: true,
       })
@@ -207,13 +213,14 @@ describe('portfolio content', () => {
 
   describe('the gallery query', () => {
     beforeAll(async () => {
-      // Deliberately created out of order, so a passing assertion proves the
-      // sort rather than the insertion order.
+      // `_order` follows insertion order, so the albums are deliberately
+      // interleaved here: sorting has to regroup them by album for the
+      // assertion below to pass, which insertion order alone would not do.
       const rows = [
-        { album: second.id, sortOrder: 1, title: `${PREFIX} B1` },
-        { album: first.id, sortOrder: 2, title: `${PREFIX} A2` },
-        { album: second.id, sortOrder: 0, title: `${PREFIX} B0` },
-        { album: first.id, sortOrder: 0, title: `${PREFIX} A0` },
+        { album: first.id, title: `${PREFIX} A0` },
+        { album: second.id, title: `${PREFIX} B0` },
+        { album: first.id, title: `${PREFIX} A2` },
+        { album: second.id, title: `${PREFIX} B1` },
       ]
 
       for (const row of rows) {
@@ -230,7 +237,6 @@ describe('portfolio content', () => {
           album: first.id,
           image: media.id,
           published: false,
-          sortOrder: 1,
           title: `${PREFIX} A-hidden`,
         },
         overrideAccess: true,
@@ -244,17 +250,16 @@ describe('portfolio content', () => {
           album: first.id,
           image: notReadyMedia.id,
           published: true,
-          sortOrder: 3,
           title: `${PREFIX} A-not-ready`,
         },
         overrideAccess: true,
       })
     })
 
-    it('orders by album sortOrder, then artwork sortOrder', async () => {
+    it('groups by album order, then artwork order', async () => {
+      // Slugs passed in reverse, so album order cannot be an echo of the input.
       const result = await findGalleryArtworks({
         albumSlugs: [second.slug, first.slug],
-        limit: 20,
         payload,
       })
 
@@ -267,11 +272,7 @@ describe('portfolio content', () => {
     })
 
     it('excludes unpublished artworks', async () => {
-      const result = await findGalleryArtworks({
-        albumSlugs: [first.slug],
-        limit: 20,
-        payload,
-      })
+      const result = await findGalleryArtworks({ albumSlugs: [first.slug], payload })
 
       expect(result.artworks.map((artwork) => artwork.title)).not.toContain(`${PREFIX} A-hidden`)
     })
@@ -287,12 +288,7 @@ describe('portfolio content', () => {
     it('ignores unknown and unpublished album slugs', async () => {
       const hidden = await payload.create({
         collection: 'albums',
-        data: {
-          published: false,
-          slug: `${PREFIX}-hidden`,
-          sortOrder: 3,
-          title: `${PREFIX} Hidden`,
-        },
+        data: { published: false, slug: `${PREFIX}-hidden`, title: `${PREFIX} Hidden` },
         overrideAccess: true,
       })
 
@@ -304,22 +300,8 @@ describe('portfolio content', () => {
       expect(albums.map((album) => album.slug)).toEqual([first.slug])
     })
 
-    it('caps the page size', async () => {
-      const result = await findGalleryArtworks({
-        albumSlugs: [first.slug],
-        limit: 5_000,
-        payload,
-      })
-
-      expect(result.limit).toBe(48)
-    })
-
     it('excludes artworks whose image is not enabled yet', async () => {
-      const result = await findGalleryArtworks({
-        albumSlugs: [first.slug],
-        limit: 20,
-        payload,
-      })
+      const result = await findGalleryArtworks({ albumSlugs: [first.slug], payload })
 
       expect(result.artworks.map((artwork) => artwork.title)).not.toContain(
         `${PREFIX} A-not-ready`,
@@ -329,14 +311,48 @@ describe('portfolio content', () => {
     })
 
     it('projects the image sizes the frontend needs', async () => {
-      const result = await findGalleryArtworks({
-        albumSlugs: [first.slug],
-        limit: 1,
-        payload,
-      })
+      const result = await findGalleryArtworks({ albumSlugs: [first.slug], payload })
 
       expect(result.artworks[0]?.image?.sizes.card).toBeTruthy()
       expect(result.artworks[0]?.image?.alt).toBe(media.alt)
+    })
+
+    describe('the homepage per-album cap', () => {
+      it('keeps the first n of each album and drops the rest', async () => {
+        const result = await findGalleryArtworks({
+          albumSlugs: [second.slug, first.slug],
+          payload,
+        })
+
+        // `first` holds A0 and A2, `second` holds B0 and B1.
+        const capped = takePerAlbum(result.artworks, 1)
+
+        expect(capped.map((artwork) => artwork.title)).toEqual([
+          `${PREFIX} A0`,
+          `${PREFIX} B0`,
+        ])
+      })
+
+      it('is a ceiling, not a quota — a thin album never pulls extras', async () => {
+        const artworks = await findGalleryArtworks({
+          albumSlugs: [second.slug, first.slug],
+          payload,
+        }).then((result) => result.artworks)
+
+        // Every album here has fewer than 10, so nothing is dropped.
+        expect(takePerAlbum(artworks, 10)).toHaveLength(artworks.length)
+      })
+
+      it('leaves the query ordering untouched', async () => {
+        const artworks = await findGalleryArtworks({
+          albumSlugs: [second.slug, first.slug],
+          payload,
+        }).then((result) => result.artworks)
+
+        expect(takePerAlbum(artworks, 5).map((a) => a.title)).toEqual(
+          artworks.map((a) => a.title),
+        )
+      })
     })
   })
 

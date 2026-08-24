@@ -1,6 +1,5 @@
 import type { CollectionConfig } from 'payload'
 
-import { galleryEndpoint } from '@/endpoints/gallery'
 import { admins, editors, publishedOrEditor } from '@/lib/auth/access'
 import { CACHE_TAGS } from '@/lib/content/cache-tags'
 import { getDefaultAlbumId } from '@/lib/content/default-album'
@@ -15,15 +14,18 @@ export const Artworks: CollectionConfig = {
     update: editors,
   },
   admin: {
-    defaultColumns: ['title', 'album', 'sortOrder', 'published', 'updatedAt'],
+    defaultColumns: ['title', 'album', 'published', 'updatedAt'],
     description:
-      'One row per piece. The image itself lives in Media — an artwork wraps it with the album, ordering and caption metadata the gallery needs.',
+      'One row per piece. The image itself lives in Media — an artwork wraps it with the album and caption metadata the gallery needs. Order is set per album, on the album itself.',
     group: 'Content',
     listSearchableFields: ['title', 'medium'],
     useAsTitle: 'title',
   },
-  defaultSort: 'sortOrder',
-  endpoints: [galleryEndpoint],
+  // No collection-level `orderable` on purpose: artwork order is set by dragging
+  // rows inside an album (see the `artworks` join field on `Albums`), so a
+  // second, album-blind ordering here would only compete with it. This list is
+  // for finding a piece, hence the alphabetical default.
+  defaultSort: 'title',
   fields: [
     {
       name: 'title',
@@ -46,17 +48,6 @@ export const Artworks: CollectionConfig = {
       defaultValue: async ({ req }) => await getDefaultAlbumId({ payload: req.payload, req }),
       index: true,
       relationTo: 'albums',
-      required: true,
-    },
-    {
-      name: 'sortOrder',
-      type: 'number',
-      admin: {
-        description: 'Position within the album. Lower numbers come first.',
-        position: 'sidebar',
-      },
-      defaultValue: 0,
-      index: true,
       required: true,
     },
     {

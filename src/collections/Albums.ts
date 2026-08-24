@@ -16,13 +16,18 @@ export const Albums: CollectionConfig = {
     update: editors,
   },
   admin: {
-    defaultColumns: ['title', 'slug', 'sortOrder', 'published', 'updatedAt'],
+    defaultColumns: ['title', 'slug', 'published', 'updatedAt'],
     description:
-      'Groups of artworks. Albums become the filter chips on the homepage gallery; the order here is the order of the chips.',
+      'Groups of artworks. Albums become the filter chips on the homepage gallery; drag the rows to reorder the chips.',
     group: 'Content',
     useAsTitle: 'title',
   },
-  defaultSort: 'sortOrder',
+  // Drag-and-drop ordering in the list view. Payload maintains the `_order`
+  // field with fractional indexing, so a reorder writes one row rather than
+  // renumbering the table. `defaultSort` has to be `_order` for the drag handle
+  // to appear at all.
+  defaultSort: '_order',
+  orderable: true,
   fields: [
     {
       name: 'title',
@@ -35,17 +40,6 @@ export const Albums: CollectionConfig = {
     {
       name: 'description',
       type: 'textarea',
-    },
-    {
-      name: 'sortOrder',
-      type: 'number',
-      admin: {
-        description: 'Lower numbers come first.',
-        position: 'sidebar',
-      },
-      defaultValue: 0,
-      index: true,
-      required: true,
     },
     {
       name: 'published',
@@ -78,12 +72,17 @@ export const Albums: CollectionConfig = {
       name: 'artworks',
       type: 'join',
       admin: {
-        defaultColumns: ['title', 'sortOrder', 'published'],
-        description: 'Artworks filed into this album, in display order.',
+        defaultColumns: ['title', 'published'],
+        description: 'Artworks filed into this album. Drag the rows to set the order they appear in the gallery.',
       },
       collection: 'artworks',
-      defaultSort: 'sortOrder',
+      // Ordering lives here rather than on the collection: an artwork's position
+      // only means anything relative to the other artworks in its album, and
+      // this is the one screen where that context exists. Payload adds a
+      // per-album fractional index to `artworks` for it and points the join's
+      // `defaultSort` at that field — see `ARTWORK_ORDER_FIELD`.
       on: 'album',
+      orderable: true,
     },
   ],
   hooks: {

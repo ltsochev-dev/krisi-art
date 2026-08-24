@@ -87,6 +87,14 @@ export const Homepage: GlobalConfig = {
               required: true,
             },
             {
+              name: 'sectionSubtitle',
+              type: 'textarea',
+              admin: {
+                description: 'Plain text. Blank lines separate paragraphs.',
+                rows: 4,
+              },
+            },
+            {
               /**
                * An array rather than a `hasMany` relationship: rows carry both
                * the chip order and whether that chip starts switched on, which a
@@ -96,7 +104,7 @@ export const Homepage: GlobalConfig = {
               type: 'array',
               admin: {
                 description:
-                  'Albums offered as chips, in order. At least one row should start selected, or the grid loads empty.',
+                  'Albums offered as chips, in this order. The first row is the chip selected when the page loads; "All" sits at the end of the row.',
                 initCollapsed: false,
               },
               fields: [
@@ -111,7 +119,9 @@ export const Homepage: GlobalConfig = {
                   name: 'selectedByDefault',
                   type: 'checkbox',
                   admin: {
-                    description: 'Chip is switched on when the page first loads.',
+                    description:
+                      'No longer used — the first album in this list is the one selected on load. Move an album to the top instead.',
+                    readOnly: true,
                   },
                   defaultValue: true,
                 },
@@ -121,18 +131,6 @@ export const Homepage: GlobalConfig = {
                 singular: 'Album',
               },
               maxRows: 12,
-            },
-            {
-              name: 'imagesPerAlbum',
-              type: 'number',
-              admin: {
-                description:
-                  'How many artworks to pull from each selected album on the homepage preview.',
-              },
-              defaultValue: 8,
-              max: 48,
-              min: 1,
-              required: true,
             },
           ],
           label: 'Gallery',

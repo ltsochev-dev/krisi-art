@@ -20,7 +20,7 @@ import './globals.css'
 import { getPayload } from 'payload'
 import { headers } from 'next/headers'
 import Navbar from '@/components/Navbar'
-import logo from '@/assets/logo-light.png'
+import logo from '@/assets/logo.svg'
 import Footer from '@/components/Footer'
 
 /**

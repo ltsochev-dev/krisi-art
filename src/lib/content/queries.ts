@@ -20,14 +20,13 @@ import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 
 import type { Album, ContactPage, Homepage, Page, SiteSetting, Testimonial } from '@/payload-types'
-import type { GalleryImage, GalleryPage } from '@/lib/content/gallery'
+import type { GalleryArtwork, GalleryImage, GalleryPage } from '@/lib/content/gallery'
 
 import { CACHE_TAGS } from '@/lib/content/cache-tags'
-import { findGalleryArtworks, isPopulated, toGalleryImage } from '@/lib/content/gallery'
+import { findGalleryArtworks, isPopulated, takePerAlbum, toGalleryImage } from '@/lib/content/gallery'
 import config from '@/payload.config'
 
 export type { GalleryArtwork, GalleryImage, GalleryPage } from '@/lib/content/gallery'
-export { DEFAULT_GALLERY_LIMIT, MAX_GALLERY_LIMIT } from '@/lib/content/gallery'
 
 const payloadInstance = async () => await getPayload({ config: await config })
 
@@ -204,14 +203,14 @@ export const getTestimonials = unstable_cache(
 // --- Gallery ---------------------------------------------------------------
 
 /**
- * Cached gallery page.
+ * Cached gallery artworks for a set of album slugs.
  *
  * The `unstable_cache` key includes the arguments, so each distinct chip
  * combination gets its own entry — all of them tagged, so one artwork edit drops
  * the lot rather than leaving stale combinations behind.
  */
 export const getGalleryArtworks = unstable_cache(
-  async (args: { albumSlugs: string[]; limit?: number; page?: number }): Promise<GalleryPage> => {
+  async (args: { albumSlugs: string[] }): Promise<GalleryPage> => {
     const payload = await payloadInstance()
 
     return await findGalleryArtworks({ ...args, payload })
@@ -221,26 +220,52 @@ export const getGalleryArtworks = unstable_cache(
 )
 
 /**
- * The homepage's first paint: the chips plus the artworks for the chips that
- * start switched on. Subsequent toggles go through `/api/artworks/gallery`.
+ * How many artworks each album contributes to the homepage grid.
+ *
+ * A constant rather than an editable field: the homepage layout is built around
+ * a preview-sized grid, so this is a design decision rather than copy.
  */
-export const getHomepageGallery = async (): Promise<{
+export const HOMEPAGE_IMAGES_PER_ALBUM = 6
+
+export type HomepageGallery = {
   albums: FeaturedAlbum[]
-  initial: GalleryPage
-  imagesPerAlbum: number
-}> => {
+  /**
+   * Up to `HOMEPAGE_IMAGES_PER_ALBUM` artworks per album, in album order then
+   * album-local order.
+   */
+  artworks: GalleryArtwork[]
+  /** `sectionTitle` on the global. */
+  heading: string
+  /** `sectionSubtitle` on the global. Plain text; blank lines are paragraphs. */
+  subheading: null | string
+}
+
+/**
+ * The whole homepage gallery section: the copy, the chips, and every artwork
+ * behind them.
+ *
+ * All of it ships in one payload so the chips filter in the browser — there is
+ * no second request when one is toggled, and no chip can land on an empty grid
+ * just because its album was not the one selected on the server. Each album is
+ * capped at `HOMEPAGE_IMAGES_PER_ALBUM`, so this is a preview of every album
+ * rather than the whole catalogue.
+ *
+ * The copy rides along here rather than being read off `getHomepage()` at the
+ * call site, so the page asks for the gallery *section* and gets all of it —
+ * same shape as `getHeroSection` and `getAboutSection`. The global read is
+ * already happening below, so this costs nothing.
+ */
+export const getHomepageGallery = async (): Promise<HomepageGallery> => {
   const [homepage, albums] = await Promise.all([getHomepage(), getFeaturedAlbums()])
-  const selected = albums.filter((album) => album.selectedByDefault)
-  const imagesPerAlbum = homepage.imagesPerAlbum
+
+  const { artworks } = await getGalleryArtworks({
+    albumSlugs: albums.map((album) => album.slug),
+  })
 
   return {
     albums,
-    imagesPerAlbum,
-    initial: await getGalleryArtworks({
-      albumSlugs: selected.map((album) => album.slug),
-      // The grid holds the union of the selected albums, so the page size scales
-      // with how many chips start on.
-      limit: Math.max(imagesPerAlbum * Math.max(selected.length, 1), 1),
-    }),
+    artworks: takePerAlbum(artworks, HOMEPAGE_IMAGES_PER_ALBUM),
+    heading: homepage.sectionTitle,
+    subheading: homepage.sectionSubtitle ?? null,
   }
 }

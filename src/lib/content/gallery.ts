@@ -2,21 +2,29 @@
  * Gallery query core.
  *
  * Deliberately free of `next/cache` and of `@/payload.config`: the Payload
- * instance is passed in. That lets both callers reuse the exact same query —
+ * instance is passed in, so `@/lib/content/queries` can wrap it in
+ * `unstable_cache` for server components without this module reaching back
+ * through the cached layer.
  *
- * - `@/lib/content/queries` wraps it in `unstable_cache` for server components,
- * - the `/api/artworks/gallery` endpoint calls it with `req.payload`,
- *
- * — without the endpoint (which lives inside the config) importing the config
- * back through the cached layer.
+ * The query itself is unpaginated: it returns every published artwork of every
+ * album asked for, in one pass, and the chips filter that set client-side.
+ * Reordering an album in the admin therefore changes the grid order without any
+ * per-chip fetching. Callers that only want a preview cap the result with
+ * `takePerAlbum` rather than paginating.
  */
 import type { Payload, PayloadRequest } from 'payload'
 
 import type { Album, Media } from '@/payload-types'
 
-/** Hard ceiling on how many artworks one gallery request may return. */
-export const MAX_GALLERY_LIMIT = 48
-export const DEFAULT_GALLERY_LIMIT = 12
+/**
+ * Each artwork's position within its own album.
+ *
+ * Payload derives the name from the orderable join field on `Albums` as
+ * `_<collection>_<field>_order`, so it is generated rather than declared —
+ * renaming that field renames this column. It is per-album by construction:
+ * dragging a row on one album cannot disturb another's order.
+ */
+export const ARTWORK_ORDER_FIELD = '_artworks_artworks_order'
 
 /** The lean image shape the frontend renders. Mirrors the sizes in `Media.ts`. */
 export type GalleryImage = {
@@ -50,9 +58,6 @@ export type GalleryPage = {
   /** Echo of the album slugs that were actually resolved and queried. */
   albums: string[]
   artworks: GalleryArtwork[]
-  hasNextPage: boolean
-  limit: number
-  page: number
   totalDocs: number
 }
 
@@ -94,9 +99,6 @@ export const toGalleryImage = (media: Media | null | number | undefined): Galler
   }
 }
 
-export const clampLimit = (limit: number | undefined): number =>
-  Math.min(Math.max(Math.trunc(limit ?? DEFAULT_GALLERY_LIMIT) || 1, 1), MAX_GALLERY_LIMIT)
-
 /**
  * Published albums matching the given slugs, in chip order.
  *
@@ -120,7 +122,7 @@ export const findPublishedAlbumsBySlug = async ({
     overrideAccess: true,
     pagination: false,
     req,
-    sort: ['sortOrder', 'title'],
+    sort: ['_order', 'title'],
     where: {
       and: [{ published: { equals: true } }, { slug: { in: wanted } }],
     },
@@ -129,54 +131,69 @@ export const findPublishedAlbumsBySlug = async ({
   return docs
 }
 
+/**
+ * The first `perAlbum` artworks of each album, discarding the rest.
+ *
+ * A filter rather than a group-and-slice, so the album ordering the query
+ * already applied survives untouched. Albums holding fewer than `perAlbum`
+ * artworks simply contribute all of them; the cap is a ceiling, not a quota, so
+ * a thin album never pulls extras from a fat one.
+ *
+ * Capping here rather than in the query is deliberate: SQL cannot express "n
+ * rows per group" without a window function, and the alternative — one query
+ * per album — trades a single cached read for one per chip.
+ */
+export const takePerAlbum = (
+  artworks: GalleryArtwork[],
+  perAlbum: number,
+): GalleryArtwork[] => {
+  const taken = new Map<string, number>()
+
+  return artworks.filter((artwork) => {
+    const soFar = taken.get(artwork.album.slug) ?? 0
+
+    if (soFar >= perAlbum) {
+      return false
+    }
+
+    taken.set(artwork.album.slug, soFar + 1)
+
+    return true
+  })
+}
+
 export const findGalleryArtworks = async ({
   albumSlugs,
-  limit,
-  page = 1,
   payload,
   req,
-}: {
-  albumSlugs: string[]
-  limit?: number
-  page?: number
-} & Ctx): Promise<GalleryPage> => {
-  const cappedLimit = clampLimit(limit)
-  const requestedPage = Math.max(Math.trunc(page) || 1, 1)
-
+}: { albumSlugs: string[] } & Ctx): Promise<GalleryPage> => {
   const albums = await findPublishedAlbumsBySlug({ payload, req, slugs: albumSlugs })
 
   // No selected chips means an empty grid, not the entire catalogue.
   if (albums.length === 0) {
-    return {
-      albums: [],
-      artworks: [],
-      hasNextPage: false,
-      limit: cappedLimit,
-      page: requestedPage,
-      totalDocs: 0,
-    }
+    return { albums: [], artworks: [], totalDocs: 0 }
   }
 
   const result = await payload.find({
     collection: 'artworks',
     depth: 1,
-    limit: cappedLimit,
+    // `pagination: false` returns every match in one pass; the gallery is
+    // filtered client-side, so a partial page would silently hide work.
     overrideAccess: true,
-    page: requestedPage,
+    pagination: false,
     req,
     // Album order first, so the union of several selected chips still reads as
     // grouped albums rather than an interleaved jumble. The dotted path makes
     // the adapter join `albums`; an unresolvable sort path is silently dropped
     // by the query builder rather than raising, hence the integration test that
     // asserts the resulting order.
-    sort: ['album.sortOrder', 'sortOrder', 'title'],
+    sort: ['album._order', ARTWORK_ORDER_FIELD, 'title'],
     where: {
       and: [
         { published: { equals: true } },
         { album: { in: albums.map((album) => album.id) } },
         // Filtered in the query rather than dropped from `result.docs`, so
-        // `totalDocs` and `hasNextPage` stay honest — post-filtering would leave
-        // short pages and a page count that promises artworks it cannot deliver.
+        // `totalDocs` stays honest and matches the number of cards that render.
         { 'image.enabled': { equals: true } },
       ],
     },
@@ -207,9 +224,6 @@ export const findGalleryArtworks = async ({
         },
       ]
     }),
-    hasNextPage: Boolean(result.hasNextPage),
-    limit: cappedLimit,
-    page: result.page ?? requestedPage,
     totalDocs: result.totalDocs,
   }
 }

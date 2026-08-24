@@ -2,7 +2,7 @@
 
 import { motion } from 'motion/react'
 import { ArrowDown } from 'lucide-react'
-import logoDefault from '@/assets/logo-light.png'
+import logoDefault from '@/assets/logo.svg'
 import Image, { StaticImageData } from 'next/image'
 
 interface Props {

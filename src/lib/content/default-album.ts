@@ -62,7 +62,6 @@ export const ensureDefaultAlbum = async ({ payload, req }: Ctx): Promise<Album> 
         // editor can publish it if they really want it on the site.
         published: false,
         slug: DEFAULT_ALBUM_SLUG,
-        sortOrder: 9999,
         title: DEFAULT_ALBUM_TITLE,
       },
       depth: 0,
