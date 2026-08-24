@@ -16,7 +16,7 @@ const Footer = ({ siteName, footerText, privacyUrl = '#', termsUrl = '#' }: Prop
       <div className="container mx-auto px-6">
         <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
           <div className="flex items-center gap-3">
-            <Image src={logo} alt={siteName} className="h-8 w-auto opacity-70 invert" />
+            <Image src={logo} alt={siteName} className="h-8 w-auto opacity-70" />
             <span className="font-serif text-lg text-muted-foreground">{siteName}</span>
           </div>
 

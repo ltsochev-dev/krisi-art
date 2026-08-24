@@ -2,8 +2,8 @@
 
 import { motion } from 'motion/react'
 import { Mail, Send } from 'lucide-react'
-import Instagram from './icons/instagram'
 import { getSiteSettings } from '@/lib/content/queries'
+import SocialIcon from './SocialIcon'
 
 type SocialEntry = NonNullable<Awaited<ReturnType<typeof getSiteSettings>>['socials']>[number]
 
@@ -48,19 +48,9 @@ const Contact = ({ title, subtitle, socials = [] }: Props) => {
                 aria-label={social.platform}
                 title={social.platform}
                 target="_blank"
+                rel="noopener noreferrer nofollow external"
               >
-                A
-              </motion.a>
-            ))}
-            {[{ icon: Send, label: 'Telegram', href: '#' }].map((social) => (
-              <motion.a
-                key={social.label}
-                href={social.href}
-                whileHover={{ scale: 1.1, y: -2 }}
-                className="rounded-full border border-border p-3 text-muted-foreground transition-colors duration-300 hover:border-primary hover:text-primary"
-                aria-label={social.label}
-              >
-                <social.icon size={20} />
+                <SocialIcon platform={social.platform} />
               </motion.a>
             ))}
           </div>
