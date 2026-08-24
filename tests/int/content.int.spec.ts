@@ -15,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { seedMedia } from '../helpers/seedMedia'
 import config from '@/payload.config'
 import {
+  findGalleryAlbums,
   findGalleryArtworks,
   findPublishedAlbumsBySlug,
   takePerAlbum,
@@ -315,6 +316,40 @@ describe('portfolio content', () => {
 
       expect(result.artworks[0]?.image?.sizes.card).toBeTruthy()
       expect(result.artworks[0]?.image?.alt).toBe(media.alt)
+    })
+
+    describe('the gallery index', () => {
+      it('gives each album a cover and a count', async () => {
+        const albums = await findGalleryAlbums({ payload })
+        const mine = albums.filter((album) => album.slug.startsWith(PREFIX))
+
+        expect(mine.map((album) => album.slug)).toEqual([first.slug, second.slug])
+        // `first` holds A0 and A2 — A-hidden is unpublished and A-not-ready has a
+        // disabled image, so neither counts nor becomes the cover.
+        expect(mine[0]?.artworkCount).toBe(2)
+        expect(mine[0]?.cover?.sizes.card).toBeTruthy()
+      })
+
+      it('keeps an album with nothing renderable, rather than dropping it', async () => {
+        const empty = await payload.create({
+          collection: 'albums',
+          data: { published: true, slug: `${PREFIX}-bare`, title: `${PREFIX} Bare` },
+          overrideAccess: true,
+        })
+
+        const albums = await findGalleryAlbums({ payload })
+        const bare = albums.find((album) => album.slug === empty.slug)
+
+        expect(bare).toBeDefined()
+        expect(bare?.artworkCount).toBe(0)
+        expect(bare?.cover).toBeNull()
+      })
+
+      it('leaves unpublished albums out entirely', async () => {
+        const albums = await findGalleryAlbums({ payload })
+
+        expect(albums.map((album) => album.slug)).not.toContain(DEFAULT_ALBUM_SLUG)
+      })
     })
 
     describe('the homepage per-album cap', () => {

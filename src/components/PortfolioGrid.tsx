@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
-import ArtworkCard from './ArtworkCard'
+import { motion } from 'motion/react'
+import Link from 'next/link'
+import ArtworkGrid from './ArtworkGrid'
 import type { FeaturedAlbum, GalleryArtwork } from '@/lib/content/queries'
 
 interface Props {
@@ -19,7 +20,7 @@ const PortfolioGrid = ({ title, subtitle, albums, artworks }: Props) => {
   // there are no albums to select.
   const [activeAlbum, setActiveAlbum] = useState<string>(() => albums[0]?.slug ?? 'all')
 
-  const categories = useMemo(() => {
+  const categories = useMemo<Record<string, string>>(() => {
     const byAlbum = albums.reduce<Record<string, string>>((acc, album) => {
       acc[album.slug] = album.title
 
@@ -78,12 +79,25 @@ const PortfolioGrid = ({ title, subtitle, albums, artworks }: Props) => {
         </motion.div>
 
         {/* Grid */}
-        <motion.div layout className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <AnimatePresence mode="popLayout">
-            {filteredArtworks.map((artwork, index) => (
-              <ArtworkCard key={artwork.id} artwork={artwork} index={index} />
-            ))}
-          </AnimatePresence>
+        <ArtworkGrid artworks={filteredArtworks} emptyMessage="No work in this album yet." />
+
+        {/*
+          The homepage shows at most six per album, so there is almost always
+          more behind this than the grid above admits.
+        */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mt-16 text-center"
+        >
+          <Link
+            href={activeAlbum === 'all' ? '/gallery' : `/gallery/${activeAlbum}`}
+            className="inline-block rounded-full border border-border px-8 py-3 font-sans text-sm tracking-widest text-muted-foreground uppercase transition-colors hover:border-primary hover:text-foreground"
+          >
+            {activeAlbum === 'all' ? 'Browse all albums' : `See all of ${categories[activeAlbum]}`}
+          </Link>
         </motion.div>
       </div>
     </section>

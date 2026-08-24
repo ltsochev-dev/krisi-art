@@ -20,13 +20,30 @@ import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 
 import type { Album, ContactPage, Homepage, Page, SiteSetting, Testimonial } from '@/payload-types'
-import type { GalleryArtwork, GalleryImage, GalleryPage } from '@/lib/content/gallery'
+import type {
+  GalleryAlbumSummary,
+  GalleryArtwork,
+  GalleryImage,
+  GalleryPage,
+} from '@/lib/content/gallery'
 
 import { CACHE_TAGS } from '@/lib/content/cache-tags'
-import { findGalleryArtworks, isPopulated, takePerAlbum, toGalleryImage } from '@/lib/content/gallery'
+import {
+  findGalleryAlbums,
+  findGalleryArtworks,
+  findPublishedAlbumsBySlug,
+  isPopulated,
+  takePerAlbum,
+  toGalleryImage,
+} from '@/lib/content/gallery'
 import config from '@/payload.config'
 
-export type { GalleryArtwork, GalleryImage, GalleryPage } from '@/lib/content/gallery'
+export type {
+  GalleryAlbumSummary,
+  GalleryArtwork,
+  GalleryImage,
+  GalleryPage,
+} from '@/lib/content/gallery'
 
 const payloadInstance = async () => await getPayload({ config: await config })
 
@@ -269,3 +286,59 @@ export const getHomepageGallery = async (): Promise<HomepageGallery> => {
     subheading: homepage.sectionSubtitle ?? null,
   }
 }
+
+// --- Gallery pages ---------------------------------------------------------
+
+/**
+ * The gallery index: every published album with a cover and a count.
+ *
+ * Tagged like the homepage gallery, so publishing an artwork or toggling the
+ * media behind a cover drops this entry too.
+ */
+export const getGalleryAlbums = unstable_cache(
+  async (): Promise<GalleryAlbumSummary[]> => {
+    const payload = await payloadInstance()
+
+    return await findGalleryAlbums({ payload })
+  },
+  ['gallery-albums'],
+  { tags: [CACHE_TAGS.albums, CACHE_TAGS.artworks, CACHE_TAGS.media] },
+)
+
+export type GalleryAlbumPage = {
+  artworks: GalleryArtwork[]
+  description: null | string
+  slug: string
+  title: string
+}
+
+/**
+ * One album and every artwork in it, or `null` when there is no published album
+ * at that slug.
+ *
+ * Uncapped on purpose — this is the page the homepage's six-per-album preview
+ * links through to. `null` rather than an empty page for an unknown slug, so the
+ * route can 404 instead of rendering a heading over nothing.
+ */
+export const getGalleryAlbum = unstable_cache(
+  async (slug: string): Promise<GalleryAlbumPage | null> => {
+    const payload = await payloadInstance()
+
+    const [album] = await findPublishedAlbumsBySlug({ payload, slugs: [slug] })
+
+    if (!album) {
+      return null
+    }
+
+    const { artworks } = await findGalleryArtworks({ albumSlugs: [album.slug], payload })
+
+    return {
+      artworks,
+      description: album.description ?? null,
+      slug: album.slug,
+      title: album.title,
+    }
+  },
+  ['gallery-album'],
+  { tags: [CACHE_TAGS.albums, CACHE_TAGS.artworks, CACHE_TAGS.media] },
+)

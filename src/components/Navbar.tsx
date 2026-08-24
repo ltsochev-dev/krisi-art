@@ -11,6 +11,7 @@ type NavLink = NonNullable<Awaited<ReturnType<typeof getSiteSettings>>['nav']>[n
 
 const navLinks: NavLink[] = [
   { label: 'Work', href: '#work' },
+  { label: 'Gallery', href: '/gallery' },
   { label: 'About', href: '#about' },
   { label: 'Contact', href: '#contact' },
 ]
@@ -34,10 +35,12 @@ const Navbar = ({ siteName, logo, links = navLinks }: Props) => {
   }, [])
 
   const scrollTo = (href: string) => {
-    const element = document.querySelector(href)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
+    // Only in-page anchors are scrolled to; a real path has no element to find
+    // and is left to the `Link` that renders it.
+    if (href.startsWith('#')) {
+      document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' })
     }
+
     setIsMobileMenuOpen(false)
   }
 
@@ -94,17 +97,30 @@ const Navbar = ({ siteName, logo, links = navLinks }: Props) => {
             className="fixed inset-0 z-40 bg-background/98 pt-24 backdrop-blur-lg md:hidden"
           >
             <div className="flex flex-col items-center gap-8 py-12">
-              {navLinks.map((link, index) => (
-                <motion.button
+              {links.map((link, index) => (
+                <motion.div
                   key={link.label}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  onClick={() => scrollTo(link.href)}
-                  className="font-serif text-3xl text-foreground transition-colors hover:text-primary"
                 >
-                  {link.label}
-                </motion.button>
+                  {link.href.startsWith('#') ? (
+                    <button
+                      onClick={() => scrollTo(link.href)}
+                      className="font-serif text-3xl text-foreground transition-colors hover:text-primary"
+                    >
+                      {link.label}
+                    </button>
+                  ) : (
+                    <Link
+                      href={link.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="font-serif text-3xl text-foreground transition-colors hover:text-primary"
+                    >
+                      {link.label}
+                    </Link>
+                  )}
+                </motion.div>
               ))}
             </div>
           </motion.div>

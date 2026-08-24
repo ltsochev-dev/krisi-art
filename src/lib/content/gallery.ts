@@ -54,6 +54,15 @@ export type GalleryArtwork = {
   year: null | number
 }
 
+/** One album as the gallery index lists it: cover, count, no artworks. */
+export type GalleryAlbumSummary = {
+  artworkCount: number
+  cover: GalleryImage | null
+  description: null | string
+  slug: string
+  title: string
+}
+
 export type GalleryPage = {
   /** Echo of the album slugs that were actually resolved and queried. */
   albums: string[]
@@ -226,4 +235,65 @@ export const findGalleryArtworks = async ({
     }),
     totalDocs: result.totalDocs,
   }
+}
+
+/**
+ * Every published album, in chip order, with a cover and a count.
+ *
+ * Backs the gallery index. The cover is the album's first artwork under the
+ * order set on the album itself, so dragging a piece to the top of an album
+ * promotes it to that album's cover — no separate cover field to keep in sync.
+ *
+ * Albums with no renderable artwork still come back, with a null cover and a
+ * zero count: an album the editor has published but not filled yet should show
+ * as empty rather than silently vanish from the index.
+ *
+ * This re-reads the album rows that `findGalleryArtworks` resolves again
+ * internally. Two indexed reads of a nine-row table inside one cached entry is
+ * not worth threading pre-resolved albums through the public signature for.
+ */
+export const findGalleryAlbums = async ({ payload, req }: Ctx): Promise<GalleryAlbumSummary[]> => {
+  const { docs: albums } = await payload.find({
+    collection: 'albums',
+    depth: 0,
+    overrideAccess: true,
+    pagination: false,
+    req,
+    sort: ['_order', 'title'],
+    where: { published: { equals: true } },
+  })
+
+  if (albums.length === 0) {
+    return []
+  }
+
+  const { artworks } = await findGalleryArtworks({
+    albumSlugs: albums.map((album) => album.slug),
+    payload,
+    req,
+  })
+
+  const grouped = new Map<string, GalleryArtwork[]>()
+
+  for (const artwork of artworks) {
+    const bucket = grouped.get(artwork.album.slug)
+
+    if (bucket) {
+      bucket.push(artwork)
+    } else {
+      grouped.set(artwork.album.slug, [artwork])
+    }
+  }
+
+  return albums.map((album) => {
+    const own = grouped.get(album.slug) ?? []
+
+    return {
+      artworkCount: own.length,
+      cover: own.find((artwork) => artwork.image)?.image ?? null,
+      description: album.description ?? null,
+      slug: album.slug,
+      title: album.title,
+    }
+  })
 }
