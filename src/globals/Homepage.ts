@@ -38,6 +38,41 @@ export const Homepage: GlobalConfig = {
               },
               relationTo: 'media',
             },
+            {
+              /**
+               * An array of one-field rows rather than a `select` or a
+               * comma-separated `text`: rows are what give the admin panel its
+               * drag handles, so the editor controls both the wording and the
+               * order the chips appear in. Row order is the render order.
+               */
+              name: 'skills',
+              type: 'array',
+              admin: {
+                description:
+                  'Disciplines shown as chips under the hero text. Drag the rows to reorder them.',
+                initCollapsed: false,
+              },
+              defaultValue: [
+                { label: 'Traditional Painting' },
+                { label: 'Digital Art' },
+                { label: 'Comic Books' },
+                { label: 'Game Art' },
+                { label: 'Concept Art' },
+              ],
+              fields: [
+                {
+                  name: 'label',
+                  type: 'text',
+                  admin: { placeholder: 'Concept Art' },
+                  required: true,
+                },
+              ],
+              labels: {
+                plural: 'Skills',
+                singular: 'Skill',
+              },
+              maxRows: 12,
+            },
           ],
           label: 'Hero',
         },

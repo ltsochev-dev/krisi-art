@@ -20,8 +20,17 @@
 @source not '../(payload)/**';
 @source not '../../components/admin/**';
 
-/* v3 `darkMode: ['class']`. */
-@custom-variant dark (&:where(.dark, .dark *));
+/**
+ * v3 `darkMode: ['class']`, neutralised rather than translated.
+ *
+ * Left alone, v4's built-in `dark` variant is `@media (prefers-color-scheme: dark)`,
+ * which on a site that is dark unconditionally is a trap: a `dark:` utility
+ * would apply for some visitors and not others, splitting a design that has
+ * only one palette. Redefining the variant as a bare `&` makes `dark:` an
+ * unconditional pass-through, so it can never fork the design — the prefix
+ * becomes redundant, which is the honest description of what it is here.
+ */
+@custom-variant dark (&);
 
 /**
  * v3 `theme.extend` — in v4 the theme *is* CSS custom properties, and each
@@ -31,10 +40,11 @@
  * the built-in palette, while `--font-sans` and the three `--radius-*` keys
  * shadow their defaults, exactly as `extend` did.
  *
- * The `hsl(var(--x))` indirection is carried over verbatim: these still expect
- * the bare HSL triplets (`--gold: 41 52% 55%` and friends) that the v3
- * stylesheet defined on `:root` and `.dark`. Those definitions are NOT in this
- * file yet — bring them over unchanged and every token below resolves.
+ * The `hsl(var(--x))` indirection is carried over verbatim: these expect the
+ * bare HSL triplets (`--gold: 38 35% 65%` and friends) that the v3 stylesheet
+ * defined on `:root` and `.dark`. Those live at the bottom of this file — the
+ * split is what lets the palette change under a media query while the utility
+ * names generated from it stay fixed.
  */
 @theme {
   /* The families themselves come from `next/font` (see `@/lib/fonts`), which
@@ -178,5 +188,163 @@
 
   @media (width >= 1400px) {
     max-width: 1400px;
+  }
+}
+
+/**
+ * The HSL triplets every `hsl(var(--x))` in `@theme` above resolves against,
+ * brought over from the v3 stylesheet's `@layer base` block.
+ *
+ * Worth being explicit about what this palette *is*: the v3 `:root` was already
+ * the dark gallery theme ("artwork should pop"), and its `.dark` block re-declared
+ * the same values — the only real differences were a deeper `--destructive` and a
+ * completely different set of sidebar tokens.
+ *
+ * This site is dark unconditionally: it is a gallery, and the palette exists so
+ * the artwork pops against it. There is therefore exactly one `:root` block and
+ * no `prefers-color-scheme` query — a visitor whose OS asks for light still gets
+ * this, which is also what the v3 site did in practice, since nothing there ever
+ * put `.dark` on an element either.
+ *
+ * Where the two v3 blocks disagreed, the `.dark` value is the one kept: those
+ * were the ones drawn for a dark ground. Both of them (`--destructive` and the
+ * sidebar set) are unreferenced by any component today, so this is a choice
+ * about intent rather than anything you can currently see.
+ *
+ * Two v3 declarations are deliberately not carried over: `--font-serif` and
+ * `--font-sans`. `@theme` above already defines both, pointing at the
+ * `next/font` variables from `@/lib/fonts` with the literal family names kept as
+ * fallbacks — redeclaring them here would shadow that and drop the self-hosted
+ * files.
+ */
+:root {
+  /* Tells the browser to render form controls, scrollbars and the canvas dark,
+     which the v3 stylesheet never did — the palette is dark either way. */
+  color-scheme: dark;
+
+  --background: 0 0% 5%;
+  --foreground: 40 20% 92%;
+
+  --card: 0 0% 8%;
+  --card-foreground: 40 20% 92%;
+
+  --popover: 0 0% 8%;
+  --popover-foreground: 40 20% 92%;
+
+  /* Warm gold accent */
+  --primary: 38 35% 65%;
+  --primary-foreground: 0 0% 5%;
+
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 40 20% 92%;
+
+  --muted: 0 0% 15%;
+  --muted-foreground: 40 10% 55%;
+
+  --accent: 38 35% 65%;
+  --accent-foreground: 0 0% 5%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 0 0% 18%;
+  --input: 0 0% 18%;
+  --ring: 38 35% 65%;
+
+  --radius: 0.25rem;
+
+  /* Custom tokens */
+  --gold: 38 35% 65%;
+  --gold-light: 40 40% 75%;
+  --cream: 40 20% 92%;
+  --charcoal: 0 0% 8%;
+  --charcoal-light: 0 0% 12%;
+  --charcoal-deep: 0 0% 5%;
+
+  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --sidebar-background: 240 5.9% 10%;
+  --sidebar-foreground: 240 4.8% 95.9%;
+  --sidebar-primary: 224.3 76.3% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 3.7% 15.9%;
+  --sidebar-accent-foreground: 240 4.8% 95.9%;
+  --sidebar-border: 240 3.7% 15.9%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
+}
+
+/**
+ * v3 `@layer base`. The `*` rule matters more in v4 than it did in v3: v4
+ * changed the default border colour from `gray-200` to `currentColor`, so
+ * without this every `border` utility would paint in the text colour.
+ */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+}
+
+/**
+ * v3 `@layer components`. Carried over as-is apart from the gradient utilities:
+ * v4 renamed `bg-gradient-to-*` to `bg-linear-to-*`.
+ *
+ * The Vite starter leftovers that trailed the v3 file (`.logo`, `.card`,
+ * `.read-the-docs` and the `logo-spin` animation) are dropped — they are
+ * scaffolding from `create-vite`, not part of this design, and `.logo`'s
+ * `height: 6em; padding: 1.5em` would fight the `h-32 w-auto` the hero and
+ * navbar already set on their `next/image` logos.
+ */
+@layer components {
+  .text-gradient-gold {
+    background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gallery-card {
+    @apply relative overflow-hidden bg-card transition-all duration-500;
+  }
+
+  .gallery-card::before {
+    content: '';
+    @apply absolute inset-0 z-10 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300;
+  }
+
+  .gallery-card:hover::before {
+    @apply opacity-100;
+  }
+
+  .nav-link {
+    @apply relative text-muted-foreground transition-colors duration-300 hover:text-foreground;
+  }
+
+  .nav-link::after {
+    content: '';
+    @apply absolute -bottom-1 left-0 h-px w-0 bg-primary transition-all duration-300;
+  }
+
+  .nav-link:hover::after {
+    @apply w-full;
+  }
+
+  .section-divider {
+    @apply mx-auto h-px w-16 bg-linear-to-r from-transparent via-primary to-transparent;
   }
 }

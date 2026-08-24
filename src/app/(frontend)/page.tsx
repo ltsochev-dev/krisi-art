@@ -12,9 +12,17 @@
  */
 import React from 'react'
 
-import { getAboutSection, getContactPage, getHeroSection, getHomepage, getHomepageGallery } from '@/lib/content/queries'
+import {
+  getAboutSection,
+  getContactPage,
+  getHeroSection,
+  getHomepage,
+  getHomepageGallery,
+} from '@/lib/content/queries'
 
 import { GalleryFilter } from './GalleryFilter'
+import Hero from '@/components/Hero'
+import Contact from '@/components/Contact'
 
 export default async function HomePage() {
   // Independent reads, so fire them together. They all hit the same cached
@@ -29,19 +37,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <section>
-        <h2>{hero.heading}</h2>
-        {hero.subheading ? <p>{hero.subheading}</p> : null}
-        {hero.image ? (
-          // Plain <img>: media is served from S3, and wiring up next/image
-          // remote patterns is a styling-phase concern, not a data one.
-          <img alt={hero.image.alt} src={hero.image.sizes.hero ?? hero.image.url ?? ''} width={480} />
-        ) : (
-          <p>
-            <em>No hero image set.</em>
-          </p>
-        )}
-      </section>
+      <Hero title={hero.heading} subtitle={hero.subheading ?? ''} skills={hero.skills} />
 
       <hr />
 
@@ -94,6 +90,8 @@ export default async function HomePage() {
       </section>
 
       <hr />
+
+      <Contact />
 
       <section id="contact">
         <h2>{contact.heading}</h2>

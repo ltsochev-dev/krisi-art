@@ -651,6 +651,15 @@ export interface Homepage {
    * Optional. Leave empty for a text-only hero.
    */
   image?: (number | null) | Media;
+  /**
+   * Disciplines shown as chips under the hero text. Drag the rows to reorder them.
+   */
+  skills?:
+    | {
+        label: string;
+        id?: string | null;
+      }[]
+    | null;
   sectionTitle: string;
   /**
    * Albums offered as chips, in order. At least one row should start selected, or the grid loads empty.
@@ -790,6 +799,12 @@ export interface HomepageSelect<T extends boolean = true> {
   heading?: T;
   subheading?: T;
   image?: T;
+  skills?:
+    | T
+    | {
+        label?: T;
+        id?: T;
+      };
   sectionTitle?: T;
   albums?:
     | T

@@ -8,15 +8,20 @@
  */
 import type { Metadata } from 'next'
 
-import Link from 'next/link'
 import React from 'react'
 
 import { getSiteSettings } from '@/lib/content/queries'
 import { fontVariables } from '@/lib/fonts'
+import config from '@/payload.config'
 
 // Tailwind, loaded here only. The Payload admin has its own root layout and
 // stylesheet, so the reset in here never reaches it.
 import './globals.css'
+import { getPayload } from 'payload'
+import { headers } from 'next/headers'
+import Navbar from '@/components/Navbar'
+import logo from '@/assets/logo-light.png'
+import Footer from '@/components/Footer'
 
 /**
  * Every route under `(frontend)` reads the database through the Payload Local
@@ -39,42 +44,33 @@ export const generateMetadata = async (): Promise<Metadata> => {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const payload = await getPayload({ config })
+  const headersList = await headers()
   const settings = await getSiteSettings()
+
+  const { user } = await payload.auth({ headers: headersList })
+
+  const isAdminVisible = user && user.roles?.includes('admin')
+
+  const links = [
+    ...(settings.nav ?? []),
+    ...(isAdminVisible ? [{ id: 'admin', href: '/admin', label: 'Admin' }] : []),
+  ]
 
   return (
     <html className={fontVariables} lang="en">
       <body>
         <header>
-          <h1>{settings.siteName}</h1>
           {settings.tagline ? <p>{settings.tagline}</p> : null}
-          <nav>
-            {(settings.nav ?? []).map((link) => (
-              <a href={link.href} key={link.id ?? link.href}>
-                {link.label}
-              </a>
-            ))}
-            {' | '}
-            <Link href="/admin">Admin</Link>
-          </nav>
+          <Navbar siteName={settings.siteName} logo={logo} links={links} />
         </header>
-        <hr />
         <main>{children}</main>
-        <hr />
-        <footer>
-          <ul>
-            {(settings.socials ?? []).map((social) => (
-              <li key={social.id ?? social.url}>
-                <a href={social.url} rel="noreferrer" target="_blank">
-                  {social.platform}
-                </a>
-              </li>
-            ))}
-          </ul>
-          <p>
-            &copy; {new Date().getFullYear()} {settings.siteName}
-            {settings.footerText ? ` — ${settings.footerText}` : null}
-          </p>
-        </footer>
+        <Footer
+          siteName={settings.siteName}
+          footerText={settings.footerText}
+          privacyUrl="#"
+          termsUrl="#"
+        />
       </body>
     </html>
   )

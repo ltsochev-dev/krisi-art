@@ -127,6 +127,7 @@ export const getAboutSection = async (): Promise<AboutSection> => {
 export type HeroSection = {
   heading: string
   image: GalleryImage | null
+  skills: string[]
   subheading: null | string
 }
 
@@ -136,6 +137,9 @@ export const getHeroSection = async (): Promise<HeroSection> => {
   return {
     heading: homepage.heading,
     image: toGalleryImage(homepage.image),
+    // Row order is the chip order; the array is flattened to plain strings so
+    // the component never sees Payload's row wrappers.
+    skills: (homepage.skills ?? []).map((row) => row.label),
     subheading: homepage.subheading ?? null,
   }
 }

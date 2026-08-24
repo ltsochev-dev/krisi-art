@@ -1,5 +1,6 @@
-import * as migration_20260823_155423_initial from './20260823_155423_initial';
-import * as migration_20260823_162244_media_enabled from './20260823_162244_media_enabled';
+import * as migration_20260823_155423_initial from './20260823_155423_initial'
+import * as migration_20260823_162244_media_enabled from './20260823_162244_media_enabled'
+import * as migration_20260824_094733_skills from './20260824_094733_skills'
 
 export const migrations = [
   {
@@ -10,6 +11,11 @@ export const migrations = [
   {
     up: migration_20260823_162244_media_enabled.up,
     down: migration_20260823_162244_media_enabled.down,
-    name: '20260823_162244_media_enabled'
+    name: '20260823_162244_media_enabled',
   },
-];
+  {
+    up: migration_20260824_094733_skills.up,
+    down: migration_20260824_094733_skills.down,
+    name: '20260824_094733_skills',
+  },
+]
