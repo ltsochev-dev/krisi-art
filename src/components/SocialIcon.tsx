@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { ExternalLink } from 'lucide-react'
 import { ReactNode, Suspense } from 'react'
 
 const PlatformMap = {
@@ -19,7 +20,10 @@ interface Props {
 const isPlatform = (value: string): value is Platform => Object.hasOwn(PlatformMap, value)
 
 const SocialIcon = ({ platform }: Props): ReactNode => {
-  if (!isPlatform(platform)) return null
+  // The select offers more platforms than there are brand marks in
+  // `./icons` — linkedin, behance, tiktok, youtube, other. Falling back to a
+  // generic mark keeps those links visible; returning null left an empty circle.
+  if (!isPlatform(platform)) return <ExternalLink size={20} />
 
   const Icon = PlatformMap[platform]
 

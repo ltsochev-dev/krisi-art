@@ -16,7 +16,8 @@
 import { headers as getHeaders } from 'next/headers'
 import { getPayload } from 'payload'
 
-import type { ContactFieldErrors, ContactInput } from '@/lib/validation/contact'
+import type { ContactFormState } from '@/lib/actions/contact-state'
+import type { ContactInput } from '@/lib/validation/contact'
 
 import { checkRateLimit } from '@/lib/rate-limit'
 import { contactInputFromFormData, validateContactInput } from '@/lib/validation/contact'
@@ -27,14 +28,6 @@ const RATE_LIMIT = { limit: 5, windowMs: 15 * 60 * 1000 }
 
 const FALLBACK_SUCCESS = 'Thanks — your message is on its way.'
 const GENERIC_FAILURE = 'Something went wrong sending your message. Please try again shortly.'
-
-export type ContactFormState = {
-  errors?: ContactFieldErrors
-  message: string
-  status: 'error' | 'idle' | 'success'
-}
-
-export const contactFormInitialState: ContactFormState = { message: '', status: 'idle' }
 
 const clientIp = (requestHeaders: Headers): string => {
   const forwarded = requestHeaders.get('x-forwarded-for')
@@ -133,7 +126,7 @@ export const submitContactForm = async (
 
   const to = recipients.length
     ? recipients
-    : (process.env.CONTACT_NOTIFY_EMAIL?.trim() || process.env.RESEND_FROM_ADDRESS?.trim() || '')
+    : process.env.CONTACT_NOTIFY_EMAIL?.trim() || process.env.RESEND_FROM_ADDRESS?.trim() || ''
 
   if (!to || (Array.isArray(to) && to.length === 0)) {
     payload.logger.warn(
