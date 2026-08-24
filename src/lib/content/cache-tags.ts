@@ -12,6 +12,7 @@ export const CACHE_TAGS = {
   media: 'media',
   siteSettings: 'site-settings',
   tags: 'tags',
+  testimonials: 'testimonials',
 } as const
 
 export type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS]
@@ -26,4 +27,5 @@ export const HOMEPAGE_TAGS: readonly CacheTag[] = [
   CACHE_TAGS.albums,
   CACHE_TAGS.artworks,
   CACHE_TAGS.media,
+  CACHE_TAGS.testimonials,
 ]

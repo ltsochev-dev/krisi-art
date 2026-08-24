@@ -54,7 +54,7 @@ const Navbar = ({ siteName, logo, links = navLinks }: Props) => {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <motion.a href="/" whileHover={{ scale: 1.05 }} className="flex items-center gap-3">
-              <Image src={logo} alt={siteName} className="h-10 w-auto invert" />
+              <Image src={logo} alt={siteName} className="h-10 w-auto" />
               <span className="font-serif text-xl tracking-wide text-foreground">{siteName}</span>
             </motion.a>
 

@@ -52,7 +52,7 @@ export const CognitoLoginButton: React.FC<ServerProps> = ({ searchParams }) => {
   const href = `/api/auth/cognito/login?redirect=${encodeURIComponent(redirect)}`
 
   return (
-    <div>
+    <div style={{ textAlign: 'center' }}>
       {failure ? (
         <p role="alert" style={notice}>
           {FAILURE_MESSAGES[failure] ?? FAILURE_MESSAGES.server_error}

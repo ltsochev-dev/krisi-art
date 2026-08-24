@@ -88,6 +88,7 @@ export const SiteSettings: GlobalConfig = {
                 { label: 'Pinterest', value: 'pinterest' },
                 { label: 'TikTok', value: 'tiktok' },
                 { label: 'YouTube', value: 'youtube' },
+                { label: 'ArtStation', value: 'artstation' },
                 { label: 'Other', value: 'other' },
               ],
               required: true,

@@ -39,7 +39,7 @@ const Hero = ({ title, subtitle, logo = logoDefault, skills = [] }: Props) => {
           <Image
             src={logo}
             alt={`${title} Logo`}
-            className="mx-auto h-32 w-auto opacity-90 invert md:h-40"
+            className="mx-auto h-32 w-auto opacity-90 md:h-40"
           />
         </motion.div>
 

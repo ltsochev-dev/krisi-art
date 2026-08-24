@@ -216,6 +216,27 @@ export const Homepage: GlobalConfig = {
         {
           fields: [
             {
+              name: 'contactsHeading',
+              type: 'text',
+              defaultValue: "Let's Create Together",
+              required: true,
+            },
+            {
+              name: 'contactsSubtitle',
+              defaultValue:
+                "Interested in commissioning a piece or collaborating on a project? I'd love to hear about your vision.",
+              type: 'textarea',
+              admin: {
+                description: 'Plain text. Blank lines separate paragraphs.',
+                rows: 10,
+              },
+            },
+          ],
+          label: 'Contacts',
+        },
+        {
+          fields: [
+            {
               name: 'metaTitle',
               type: 'text',
               admin: {

@@ -73,6 +73,7 @@ export interface Config {
     media: Media;
     'contact-submissions': ContactSubmission;
     users: User;
+    testimonials: Testimonial;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -90,6 +91,7 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     'contact-submissions': ContactSubmissionsSelect<false> | ContactSubmissionsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
+    testimonials: TestimonialsSelect<false> | TestimonialsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -358,6 +360,50 @@ export interface User {
   collection: 'users';
 }
 /**
+ * Groups of testimonials. Testimonials are displayed on the homepage.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "testimonials".
+ */
+export interface Testimonial {
+  id: number;
+  name: string;
+  /**
+   * Plain text.
+   */
+  testimonial: string;
+  socials?:
+    | {
+        platform:
+          | 'instagram'
+          | 'facebook'
+          | 'behance'
+          | 'linkedin'
+          | 'pinterest'
+          | 'tiktok'
+          | 'youtube'
+          | 'artstation'
+          | 'other';
+        href?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Not displayed. Used internally.
+   */
+  rating?: number | null;
+  /**
+   * Lower numbers come first.
+   */
+  sortOrder?: number | null;
+  /**
+   * Unpublished testimonials are invisible to the public API.
+   */
+  published?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -404,6 +450,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'users';
         value: number | User;
+      } | null)
+    | ({
+        relationTo: 'testimonials';
+        value: number | Testimonial;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -599,6 +649,26 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "testimonials_select".
+ */
+export interface TestimonialsSelect<T extends boolean = true> {
+  name?: T;
+  testimonial?: T;
+  socials?:
+    | T
+    | {
+        platform?: T;
+        href?: T;
+        id?: T;
+      };
+  rating?: T;
+  sortOrder?: T;
+  published?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv_select".
  */
 export interface PayloadKvSelect<T extends boolean = true> {
@@ -703,6 +773,11 @@ export interface Homepage {
         id?: string | null;
       }[]
     | null;
+  contactsHeading: string;
+  /**
+   * Plain text. Blank lines separate paragraphs.
+   */
+  contactsSubtitle?: string | null;
   /**
    * Falls back to the site name when empty.
    */
@@ -771,7 +846,16 @@ export interface SiteSetting {
     | null;
   socials?:
     | {
-        platform: 'instagram' | 'facebook' | 'behance' | 'linkedin' | 'pinterest' | 'tiktok' | 'youtube' | 'other';
+        platform:
+          | 'instagram'
+          | 'facebook'
+          | 'behance'
+          | 'linkedin'
+          | 'pinterest'
+          | 'tiktok'
+          | 'youtube'
+          | 'artstation'
+          | 'other';
         url: string;
         id?: string | null;
       }[]
@@ -830,6 +914,8 @@ export interface HomepageSelect<T extends boolean = true> {
         caption?: T;
         id?: T;
       };
+  contactsHeading?: T;
+  contactsSubtitle?: T;
   metaTitle?: T;
   metaDescription?: T;
   ogImage?: T;

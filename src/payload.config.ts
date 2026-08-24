@@ -19,6 +19,7 @@ import { SiteSettings } from './globals/SiteSettings'
 import { getS3Config } from './lib/aws/s3'
 import { ensureDefaultAlbum } from './lib/content/default-album'
 import { migrations } from './migrations'
+import { Testimonials } from './collections/Testimonials'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -93,7 +94,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Albums, Artworks, Tags, Media, ContactSubmissions, Users],
+  collections: [Albums, Artworks, Tags, Media, ContactSubmissions, Users, Testimonials],
   globals: [Homepage, ContactPage, SiteSettings],
   // The app only talks to Payload through the Local API and REST, so the
   // GraphQL endpoint and its playground stay off.

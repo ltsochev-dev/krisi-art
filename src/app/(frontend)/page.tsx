@@ -14,33 +14,34 @@ import React from 'react'
 
 import {
   getAboutSection,
-  getContactPage,
   getHeroSection,
   getHomepage,
   getHomepageGallery,
+  getSiteSettings,
+  getTestimonials,
 } from '@/lib/content/queries'
 
 import { GalleryFilter } from './GalleryFilter'
 import Hero from '@/components/Hero'
 import Contact from '@/components/Contact'
+import Testimonials from '@/components/Testimonials'
 
 export default async function HomePage() {
-  // Independent reads, so fire them together. They all hit the same cached
-  // `getHomepage()` entry underneath, so this is one global read, not five.
-  const [hero, about, gallery, homepage, contact] = await Promise.all([
+  // Independent reads, so fire them together. The first four share the same
+  // cached `getHomepage()` entry underneath, so that stays one global read.
+  const [hero, about, gallery, homepage, settings, testimonials] = await Promise.all([
     getHeroSection(),
     getAboutSection(),
     getHomepageGallery(),
     getHomepage(),
-    getContactPage(),
+    getSiteSettings(),
+    getTestimonials(),
   ])
 
   return (
     <>
       <Hero title={hero.heading} subtitle={hero.subheading ?? ''} skills={hero.skills} />
-
       <hr />
-
       <section id="work">
         <h2>{homepage.sectionTitle}</h2>
         <p>
@@ -55,9 +56,7 @@ export default async function HomePage() {
           initial={gallery.initial}
         />
       </section>
-
       <hr />
-
       <section id="about">
         <h2>{about.heading}</h2>
         {(about.body ?? '')
@@ -88,23 +87,12 @@ export default async function HomePage() {
           ))}
         </ul>
       </section>
-
-      <hr />
-
-      <Contact />
-
-      <section id="contact">
-        <h2>{contact.heading}</h2>
-        {contact.intro ? <p>{contact.intro}</p> : null}
-        <ul>
-          {contact.displayEmail ? <li>Email: {contact.displayEmail}</li> : null}
-          {contact.phone ? <li>Phone: {contact.phone}</li> : null}
-          {contact.location ? <li>Location: {contact.location}</li> : null}
-        </ul>
-        <p>
-          <a href="/contact">Contact form &rarr;</a>
-        </p>
-      </section>
+      <Testimonials testimonials={testimonials} />
+      <Contact
+        title={homepage.contactsHeading}
+        subtitle={homepage.contactsSubtitle}
+        socials={settings.socials ?? []}
+      />
     </>
   )
 }

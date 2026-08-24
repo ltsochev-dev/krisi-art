@@ -3,8 +3,17 @@
 import { motion } from 'motion/react'
 import { Mail, Send } from 'lucide-react'
 import Instagram from './icons/instagram'
+import { getSiteSettings } from '@/lib/content/queries'
 
-const Contact = () => {
+type SocialEntry = NonNullable<Awaited<ReturnType<typeof getSiteSettings>>['socials']>[number]
+
+interface Props {
+  title: string
+  subtitle?: string | null
+  socials?: SocialEntry[]
+}
+
+const Contact = ({ title, subtitle, socials = [] }: Props) => {
   return (
     <section id="contact" className="bg-background py-24 md:py-32">
       <div className="container mx-auto px-6">
@@ -15,14 +24,9 @@ const Contact = () => {
           transition={{ duration: 0.6 }}
           className="mx-auto max-w-2xl text-center"
         >
-          <h2 className="mb-4 font-serif text-4xl text-foreground md:text-5xl">
-            Let&apos;s Create Together
-          </h2>
+          <h2 className="mb-4 font-serif text-4xl text-foreground md:text-5xl">{title}</h2>
           <div className="section-divider mb-8" />
-          <p className="mb-12 text-muted-foreground">
-            Interested in commissioning a piece or collaborating on a project? I&apos;d love to hear
-            about your vision.
-          </p>
+          <p className="mb-12 text-muted-foreground">{subtitle}</p>
 
           <motion.a
             href="/contact"
@@ -35,10 +39,20 @@ const Contact = () => {
           </motion.a>
 
           <div className="mt-12 flex justify-center gap-6">
-            {[
-              { icon: Instagram, label: 'Instagram', href: '#' },
-              { icon: Send, label: 'Telegram', href: '#' },
-            ].map((social) => (
+            {socials.map((social) => (
+              <motion.a
+                key={social.url}
+                href={social.url}
+                whileHover={{ scale: 1.1, y: -2 }}
+                className="rounded-full border border-border p-3 text-muted-foreground transition-colors duration-300 hover:border-primary hover:text-primary"
+                aria-label={social.platform}
+                title={social.platform}
+                target="_blank"
+              >
+                A
+              </motion.a>
+            ))}
+            {[{ icon: Send, label: 'Telegram', href: '#' }].map((social) => (
               <motion.a
                 key={social.label}
                 href={social.href}

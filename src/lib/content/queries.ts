@@ -19,7 +19,7 @@
 import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 
-import type { Album, ContactPage, Homepage, SiteSetting } from '@/payload-types'
+import type { Album, ContactPage, Homepage, SiteSetting, Testimonial } from '@/payload-types'
 import type { GalleryImage, GalleryPage } from '@/lib/content/gallery'
 
 import { CACHE_TAGS } from '@/lib/content/cache-tags'
@@ -143,6 +143,35 @@ export const getHeroSection = async (): Promise<HeroSection> => {
     subheading: homepage.subheading ?? null,
   }
 }
+
+// --- Testimonials ----------------------------------------------------------
+
+/**
+ * Published testimonials, in the order the editor arranged them.
+ *
+ * `limit: 0` is Payload's "no limit" — the set is small and the homepage renders
+ * all of it, so paginating here would only add a second read. `depth: 0` because
+ * the collection holds no relationships: the socials rows are an array field and
+ * come back inline either way.
+ */
+export const getTestimonials = unstable_cache(
+  async (): Promise<Testimonial[]> => {
+    const payload = await payloadInstance()
+
+    const { docs } = await payload.find({
+      collection: 'testimonials',
+      depth: 0,
+      limit: 0,
+      overrideAccess: true,
+      sort: 'sortOrder',
+      where: { published: { equals: true } },
+    })
+
+    return docs
+  },
+  ['testimonials'],
+  { tags: [CACHE_TAGS.testimonials] },
+)
 
 // --- Gallery ---------------------------------------------------------------
 
