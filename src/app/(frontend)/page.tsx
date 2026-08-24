@@ -25,6 +25,7 @@ import { GalleryFilter } from './GalleryFilter'
 import Hero from '@/components/Hero'
 import Contact from '@/components/Contact'
 import Testimonials from '@/components/Testimonials'
+import About from '@/components/About'
 
 export default async function HomePage() {
   // Independent reads, so fire them together. The first four share the same
@@ -57,36 +58,14 @@ export default async function HomePage() {
         />
       </section>
       <hr />
-      <section id="about">
-        <h2>{about.heading}</h2>
+      <About title={about.heading} stats={about.stats} images={about.images}>
         {(about.body ?? '')
           .split(/\n{2,}/)
           .filter(Boolean)
           .map((paragraph, index) => (
             <p key={index}>{paragraph}</p>
           ))}
-        <ul>
-          {about.stats.map((stat) => (
-            <li key={stat.label}>
-              <strong>{stat.value}</strong> {stat.label}
-            </li>
-          ))}
-        </ul>
-        <ul>
-          {about.images.map((row, index) => (
-            <li key={row.image?.id ?? index}>
-              {row.image ? (
-                <img
-                  alt={row.image.alt}
-                  src={row.image.sizes.card ?? row.image.url ?? ''}
-                  width={200}
-                />
-              ) : null}
-              {row.caption ? <figcaption>{row.caption}</figcaption> : null}
-            </li>
-          ))}
-        </ul>
-      </section>
+      </About>
       <Testimonials testimonials={testimonials} />
       <Contact
         title={homepage.contactsHeading}
