@@ -12,12 +12,18 @@ export const Testimonials: CollectionConfig = {
     update: editors,
   },
   admin: {
-    defaultColumns: ['name', 'testimonial', 'published', 'sortOrder', 'updatedAt'],
-    description: 'Groups of testimonials. Testimonials are displayed on the homepage.',
+    defaultColumns: ['name', 'testimonial', 'published', 'updatedAt'],
+    description:
+      'Groups of testimonials. Testimonials are displayed on the homepage; drag the rows to reorder them.',
     group: 'Content',
     useAsTitle: 'name',
   },
-  defaultSort: 'sortOrder',
+  // Drag-and-drop ordering in the list view, replacing the old `sortOrder`
+  // integers. Payload maintains `_order` with fractional indexing, so a reorder
+  // writes one row rather than renumbering the table. `defaultSort` has to be
+  // `_order` for the drag handle to appear at all.
+  defaultSort: '_order',
+  orderable: true,
   fields: [
     {
       name: 'name',
@@ -66,14 +72,6 @@ export const Testimonials: CollectionConfig = {
       type: 'number',
       admin: {
         description: 'Not displayed. Used internally.',
-        position: 'sidebar',
-      },
-    },
-    {
-      name: 'sortOrder',
-      type: 'number',
-      admin: {
-        description: 'Lower numbers come first.',
         position: 'sidebar',
       },
     },

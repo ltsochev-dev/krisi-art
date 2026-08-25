@@ -207,7 +207,7 @@ export const getTestimonials = unstable_cache(
       depth: 0,
       limit: 0,
       overrideAccess: true,
-      sort: 'sortOrder',
+      sort: ['_order', 'name'],
       where: { published: { equals: true } },
     })
 

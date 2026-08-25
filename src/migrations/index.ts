@@ -8,6 +8,7 @@ import * as migration_20260824_123751_pages from './20260824_123751_pages';
 import * as migration_20260824_144215_gallery_subtitle from './20260824_144215_gallery_subtitle';
 import * as migration_20260824_155112_orderable_albums_artworks from './20260824_155112_orderable_albums_artworks';
 import * as migration_20260824_193612_orderable_artworks_per_album from './20260824_193612_orderable_artworks_per_album';
+import * as migration_20260825_200000_orderable_testimonials from './20260825_200000_orderable_testimonials';
 
 export const migrations = [
   {
@@ -59,5 +60,10 @@ export const migrations = [
     up: migration_20260824_193612_orderable_artworks_per_album.up,
     down: migration_20260824_193612_orderable_artworks_per_album.down,
     name: '20260824_193612_orderable_artworks_per_album'
+  },
+  {
+    up: migration_20260825_200000_orderable_testimonials.up,
+    down: migration_20260825_200000_orderable_testimonials.down,
+    name: '20260825_200000_orderable_testimonials',
   },
 ];

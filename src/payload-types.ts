@@ -356,13 +356,14 @@ export interface User {
   collection: 'users';
 }
 /**
- * Groups of testimonials. Testimonials are displayed on the homepage.
+ * Groups of testimonials. Testimonials are displayed on the homepage; drag the rows to reorder them.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "testimonials".
  */
 export interface Testimonial {
   id: number;
+  _order?: string | null;
   name: string;
   /**
    * Plain text.
@@ -388,10 +389,6 @@ export interface Testimonial {
    * Not displayed. Used internally.
    */
   rating?: number | null;
-  /**
-   * Lower numbers come first.
-   */
-  sortOrder?: number | null;
   /**
    * Unpublished testimonials are invisible to the public API.
    */
@@ -691,6 +688,7 @@ export interface UsersSelect<T extends boolean = true> {
  * via the `definition` "testimonials_select".
  */
 export interface TestimonialsSelect<T extends boolean = true> {
+  _order?: T;
   name?: T;
   testimonial?: T;
   socials?:
@@ -701,7 +699,6 @@ export interface TestimonialsSelect<T extends boolean = true> {
         id?: T;
       };
   rating?: T;
-  sortOrder?: T;
   published?: T;
   updatedAt?: T;
   createdAt?: T;
