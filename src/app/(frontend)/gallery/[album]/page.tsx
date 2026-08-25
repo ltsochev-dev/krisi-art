@@ -4,6 +4,12 @@
  * `getGalleryAlbum` returns null for an unknown *or* unpublished slug, so both
  * 404 rather than rendering a heading over an empty grid. Every artwork ships in
  * one payload and the cards lazy-load offscreen images; there is no paging.
+ *
+ * Rendered per request like every other `(frontend)` route — see the note on
+ * `dynamic` in the layout. Enumerating the albums for `generateStaticParams`
+ * would mean querying Payload from the Docker builder stage, which has neither
+ * a secret nor a migrated database; the cached reads in `@/lib/content/queries`
+ * are what keep the per-request path cheap.
  */
 import type { Metadata } from 'next'
 
@@ -11,7 +17,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import ArtworkGrid from '@/components/ArtworkGrid'
-import { getGalleryAlbum, getGalleryAlbums } from '@/lib/content/queries'
+import { getGalleryAlbum } from '@/lib/content/queries'
 
 type Props = { params: Promise<{ album: string }> }
 
@@ -27,17 +33,6 @@ export const generateMetadata = async ({ params }: Props): Promise<Metadata> => 
     title: album.title,
     ...(album.description ? { description: album.description } : {}),
   }
-}
-
-/**
- * Pre-renders the album pages at build time. Unpublishing an album leaves a
- * stale param behind, which the `notFound()` below still catches at request
- * time — the cache tags drop the entry either way.
- */
-export const generateStaticParams = async () => {
-  const albums = await getGalleryAlbums()
-
-  return albums.map((album) => ({ album: album.slug }))
 }
 
 const AlbumPage = async ({ params }: Props) => {

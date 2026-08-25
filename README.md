@@ -168,3 +168,90 @@ the local-disk upload fallback (`/app/media`):
 ```bash
 docker compose up --build
 ```
+
+## Continuous deployment
+
+`.github/workflows/deploy.yml` runs on every push:
+
+1. **verify** — `pnpm typecheck`, `pnpm lint`, `pnpm test:int`. Nothing is built
+   until these pass. The suite needs only `DATABASE_URL` and `PAYLOAD_SECRET`,
+   both throwaway values set in the workflow.
+2. **build** — pushes the image to `ghcr.io/<owner>/<repo>`, tagged with the full
+   commit SHA (plus the branch name, and `latest` on `main`).
+3. **deploy** — SSHes into the VPS, pulls that SHA and restarts the container.
+   Automatic on `main`; for any other branch use **Actions → Deploy → Run
+   workflow** and pick the branch.
+
+Playwright is deliberately not in the pipeline: `tests/helpers` seeds users
+through Payload in-process, so the suite needs to share a database file and
+`PAYLOAD_SECRET` with the running server. Run `pnpm test:e2e` locally.
+
+The deploy job opens a GitHub deployment for the `production` environment before
+touching the box and closes it as `success` or `failure`, so the result shows on
+the commit and under **Environments**.
+
+### Server-side layout
+
+The workflow never copies a compose file — the VPS owns it. In `$DEPLOY_DIR`
+(default `/opt/krisi-art`) keep `docker-compose.yml` and the app's `.env`. The
+compose file is the committed one with `build: .` swapped for an image
+reference:
+
+```yaml
+services:
+  app:
+    image: ${IMAGE}:${IMAGE_TAG}
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    volumes:
+      - database:/app/database
+      - media:/app/media
+    healthcheck: # unchanged from the committed file
+      ...
+
+volumes:
+  database:
+  media:
+```
+
+`IMAGE`/`IMAGE_TAG` come from `.env.deploy`, which `scripts/deploy-remote.sh`
+rewrites on every deploy and passes as `docker compose --env-file .env.deploy`.
+That flag only feeds compose's `${...}` substitution; the container's own
+environment still comes from `env_file: .env`, which a deploy never touches.
+
+The script waits for the compose healthcheck to report `healthy` before
+succeeding — migrations run on container boot, so "started" is not "ready" — and
+dumps the last 100 log lines if it does not. Only dangling images are pruned, so
+the previous SHA stays on disk. Roll back without a pipeline run:
+
+```bash
+cd /opt/krisi-art
+IMAGE_TAG=<previous-sha> docker compose --env-file .env.deploy up -d
+```
+
+### Repository configuration
+
+Secrets (**Settings → Secrets and variables → Actions → Secrets**):
+
+| Secret | Purpose |
+| --- | --- |
+| `DEPLOY_SSH_KEY` | Private key, PEM, no passphrase. Its public half goes in the deploy user's `~/.ssh/authorized_keys`. |
+| `DEPLOY_HOST` | VPS hostname or IP. |
+| `DEPLOY_USER` | SSH user; must be able to run `docker`. |
+| `DEPLOY_KNOWN_HOSTS` | Optional but recommended: `ssh-keyscan -H <host>` output. Without it the host key is trusted on first use on every run. |
+
+Variables (same page, **Variables** tab) — all optional:
+
+| Variable | Default |
+| --- | --- |
+| `DEPLOY_DIR` | `/opt/krisi-art` |
+| `DEPLOY_PORT` | `22` |
+| `DEPLOY_SERVICE` | `app` |
+| `APP_URL` | unset; recorded as the deployment's environment URL |
+
+No registry credentials live on the VPS. The deploy step pipes the workflow
+run's own `GITHUB_TOKEN` over SSH, logs into ghcr.io with it and logs out again
+on exit; the token expires with the job.
