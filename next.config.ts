@@ -6,8 +6,19 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(__filename);
 
+// Production CloudFront distribution, hardcoded on purpose. `images` is
+// evaluated by `next build` and frozen into `.next/required-server-files.json`,
+// which the standalone server reads instead of re-evaluating this file — so a
+// host that only reaches the container through the runtime `.env` never becomes
+// an allowed pattern, and every `/_next/image?url=https://<cdn>/...` request
+// 400s with `"url" parameter is not allowed`. Keep this in sync with
+// `S3_CDN_URL` on the VPS.
+const PRODUCTION_CDN_HOSTNAME = "d1qo73ikqa11i8.cloudfront.net";
+
 // Mirrors `normaliseCdnUrl` in `src/lib/aws/s3.ts`: accepts a bare hostname or a
-// full origin. Only the host matters here.
+// full origin. Only the host matters here. Still honoured on top of the
+// hardcoded host so a different bucket/distribution works without a code edit —
+// but only when it is present at build time.
 const cdnHostname = (() => {
   const raw = process.env.S3_CDN_URL?.trim().replace(/\/+$/, "");
 
@@ -22,6 +33,10 @@ const cdnHostname = (() => {
   }
 })();
 
+const cdnHostnames = [
+  ...new Set([PRODUCTION_CDN_HOSTNAME, cdnHostname].filter(Boolean)),
+] as string[];
+
 const nextConfig: NextConfig = {
   output: "standalone",
   images: {
@@ -35,17 +50,11 @@ const nextConfig: NextConfig = {
     // With a CDN configured, `next/image` call sites (the about collage, the
     // hero) receive CloudFront URLs and would otherwise be rejected as an
     // unconfigured host.
-    ...(cdnHostname
-      ? {
-          remotePatterns: [
-            {
-              protocol: "https" as const,
-              hostname: cdnHostname,
-              pathname: "/**",
-            },
-          ],
-        }
-      : {}),
+    remotePatterns: cdnHostnames.map((hostname) => ({
+      protocol: "https" as const,
+      hostname,
+      pathname: "/**",
+    })),
   },
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
