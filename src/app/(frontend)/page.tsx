@@ -1,3 +1,5 @@
+import type { Metadata } from 'next'
+
 import {
   getAboutSection,
   getHeroSection,
@@ -12,6 +14,29 @@ import Contact from '@/components/Contact'
 import Testimonials from '@/components/Testimonials'
 import About from '@/components/About'
 import PortfolioGrid from '@/components/PortfolioGrid'
+import { pageMetadata } from '@/lib/seo/metadata'
+import { toGalleryImage } from '@/lib/content/gallery'
+
+/**
+ * The SEO tab on the `homepage` global, with the `site-settings` defaults behind
+ * every field.
+ *
+ * `absoluteTitle` because `metaTitle` here is the whole title — the admin field
+ * says as much ("Falls back to the site name when empty") — so it must not pick
+ * up the layout's " — <site name>" suffix on top.
+ */
+export const generateMetadata = async (): Promise<Metadata> => {
+  const [homepage, settings] = await Promise.all([getHomepage(), getSiteSettings()])
+
+  return pageMetadata({
+    absoluteTitle: true,
+    description: homepage.metaDescription,
+    image: toGalleryImage(homepage.ogImage),
+    path: '/',
+    settings,
+    title: homepage.metaTitle,
+  })
+}
 
 export default async function HomePage() {
   // Independent reads, so fire them together. The first four share the same

@@ -11,6 +11,7 @@ import type { Metadata } from 'next'
 import React from 'react'
 
 import { getSiteSettings } from '@/lib/content/queries'
+import { siteMetadata } from '@/lib/seo/metadata'
 import { fontVariables } from '@/lib/fonts'
 import config from '@/payload.config'
 
@@ -34,14 +35,18 @@ import Footer from '@/components/Footer'
  */
 export const dynamic = 'force-dynamic'
 
-export const generateMetadata = async (): Promise<Metadata> => {
-  const settings = await getSiteSettings()
-
-  return {
-    description: settings.seo?.metaDescription ?? settings.tagline ?? undefined,
-    title: settings.seo?.metaTitle || settings.siteName,
-  }
-}
+/**
+ * Site-wide defaults from the `site-settings` global: the title template every
+ * page below is suffixed with, the fallback description and OG image, and
+ * `metadataBase` — which is what lets a relative media URL (the no-CDN path,
+ * `/api/media/file/...`) resolve into an absolute `og:image`.
+ *
+ * Routes layer their own on top through `pageMetadata`. Note that Next merges
+ * the two shallowly, so each of them re-emits the whole card rather than
+ * patching this one — see `@/lib/seo/metadata`.
+ */
+export const generateMetadata = async (): Promise<Metadata> =>
+  siteMetadata(await getSiteSettings())
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const payload = await getPayload({ config })

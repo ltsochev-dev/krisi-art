@@ -22,20 +22,30 @@ import React from 'react'
 import { RichText } from '@payloadcms/richtext-lexical/react'
 import { notFound } from 'next/navigation'
 
-import { getPage } from '@/lib/content/queries'
+import { getPage, getSiteSettings } from '@/lib/content/queries'
+import { pageMetadata } from '@/lib/seo/metadata'
 
 type Props = { params: Promise<{ slug: string }> }
 
 const updatedOn = (timestamp: string): string =>
   new Intl.DateTimeFormat('en-GB', { dateStyle: 'long' }).format(new Date(timestamp))
 
+/**
+ * The `pages` collection has a title and a body, no SEO fields — so the title is
+ * the page's and the description falls through to the site default. A rich-text
+ * body is the wrong thing to derive a `<meta>` description from: it would take
+ * flattening Lexical to plain text and would read as a truncated first sentence.
+ *
+ * Nothing to override when the page is missing — the 404 renders under the
+ * layout's own title.
+ */
 export const generateMetadata = async ({ params }: Props): Promise<Metadata> => {
   const { slug } = await params
-  const page = await getPage(slug)
+  const [page, settings] = await Promise.all([getPage(slug), getSiteSettings()])
 
-  // Nothing to override when the page is missing — the 404 renders under the
-  // layout's own title.
-  return page ? { title: page.title } : {}
+  return page
+    ? pageMetadata({ path: `/${page.slug}`, settings, title: page.title })
+    : {}
 }
 
 export default async function CopyPage({ params }: Props) {

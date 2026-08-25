@@ -15,14 +15,25 @@ import type { Metadata } from 'next'
 import React from 'react'
 
 import { getContactPage, getSiteSettings } from '@/lib/content/queries'
+import { pageMetadata } from '@/lib/seo/metadata'
 
 import ContactDetails from './ContactDetails'
 import { ContactForm } from './ContactForm'
 
+/**
+ * The `contact-page` global carries no SEO group, so the page's own copy is the
+ * best source there is: the heading becomes the title and the intro the
+ * description, with the `site-settings` defaults behind both.
+ */
 export const generateMetadata = async (): Promise<Metadata> => {
-  const contact = await getContactPage()
+  const [contact, settings] = await Promise.all([getContactPage(), getSiteSettings()])
 
-  return { title: contact.heading }
+  return pageMetadata({
+    description: contact.intro,
+    path: '/contact',
+    settings,
+    title: contact.heading,
+  })
 }
 
 export default async function ContactPage() {

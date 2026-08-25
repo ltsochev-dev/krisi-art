@@ -17,22 +17,37 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import ArtworkGrid from '@/components/ArtworkGrid'
-import { getGalleryAlbum } from '@/lib/content/queries'
+import { getGalleryAlbum, getSiteSettings } from '@/lib/content/queries'
+import { pageMetadata } from '@/lib/seo/metadata'
 
 type Props = { params: Promise<{ album: string }> }
 
+/**
+ * Albums carry no SEO fields of their own, so the title and description are the
+ * album's, and the card image is its first artwork.
+ *
+ * That first artwork is also the album's cover on the gallery index — the two
+ * queries sort identically (see `findGalleryAlbums`) — so the link preview shows
+ * the same image the index does, without a second read for it.
+ *
+ * An unknown or unpublished slug returns nothing: the route 404s a line later,
+ * and the layout's own title is the right one for that.
+ */
 export const generateMetadata = async ({ params }: Props): Promise<Metadata> => {
   const { album: slug } = await params
-  const album = await getGalleryAlbum(slug)
+  const [album, settings] = await Promise.all([getGalleryAlbum(slug), getSiteSettings()])
 
   if (!album) {
     return {}
   }
 
-  return {
+  return pageMetadata({
+    description: album.description,
+    image: album.artworks[0]?.image,
+    path: `/gallery/${album.slug}`,
+    settings,
     title: album.title,
-    ...(album.description ? { description: album.description } : {}),
-  }
+  })
 }
 
 const AlbumPage = async ({ params }: Props) => {

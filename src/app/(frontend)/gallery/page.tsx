@@ -12,12 +12,27 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { getGalleryAlbums } from '@/lib/content/queries'
+import { getGalleryAlbums, getSiteSettings } from '@/lib/content/queries'
+import { pageMetadata } from '@/lib/seo/metadata'
 
-export const metadata: Metadata = {
-  title: 'Gallery',
-  description: 'Every album, from character design and comics to portraits and folk scenes.',
-}
+const GALLERY_TITLE = 'Gallery'
+
+const GALLERY_DESCRIPTION =
+  'Every album, from character design and comics to portraits and folk scenes.'
+
+/**
+ * No CMS fields back this route — the heading and blurb below are code, not copy
+ * — so the title and description are the constants above. It still goes through
+ * `pageMetadata` for the canonical URL and for the site's default OG image,
+ * which is otherwise the one thing a static object here cannot pick up.
+ */
+export const generateMetadata = async (): Promise<Metadata> =>
+  pageMetadata({
+    description: GALLERY_DESCRIPTION,
+    path: '/gallery',
+    settings: await getSiteSettings(),
+    title: GALLERY_TITLE,
+  })
 
 const countLabel = (count: number): string =>
   count === 1 ? '1 piece' : `${count} pieces`
@@ -29,7 +44,7 @@ const GalleryIndexPage = async () => {
     <section className="bg-background py-32 md:py-40">
       <div className="container mx-auto px-6">
         <header className="mb-16 text-center">
-          <h1 className="mb-4 font-serif text-4xl text-foreground md:text-5xl">Gallery</h1>
+          <h1 className="mb-4 font-serif text-4xl text-foreground md:text-5xl">{GALLERY_TITLE}</h1>
           <div className="section-divider mb-6" />
           <p className="mx-auto max-w-xl text-muted-foreground">
             Every album in full — pick one to see all of it.
