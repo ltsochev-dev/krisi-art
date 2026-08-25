@@ -35,6 +35,27 @@ const normaliseCdnUrl = (value: string | undefined): string | undefined => {
   return trimmed.includes('://') ? trimmed : `https://${trimmed}`
 }
 
+/**
+ * Joins a CDN base, an optional per-document prefix and a filename into a public
+ * media URL. Shared so `generateFileURL` in `payload.config.ts` and the admin
+ * thumbnail in the media collection cannot drift apart.
+ */
+export const joinCdnFileURL = (cdnUrl: string, filename: string, prefix?: string): string =>
+  [cdnUrl, prefix, encodeURIComponent(filename)].filter(Boolean).join('/')
+
+/**
+ * CDN base for public media URLs, or `undefined` when there is none and files
+ * are served by this app instead.
+ *
+ * Unlike `getS3Config` this never throws, so it is safe to call from a
+ * collection config that also has to work in a checkout with no AWS environment
+ * at all. It mirrors the same guard `payload.config.ts` uses to decide whether
+ * to configure the storage plugin: no bucket means no CDN, whatever
+ * `S3_CDN_URL` happens to say.
+ */
+export const getMediaCdnUrl = (): string | undefined =>
+  process.env.S3_BUCKET?.trim() ? normaliseCdnUrl(process.env.S3_CDN_URL) : undefined
+
 class S3ConfigError extends Error {
   constructor(message: string) {
     super(message)

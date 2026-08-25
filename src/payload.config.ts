@@ -16,7 +16,7 @@ import { Users } from './collections/Users'
 import { ContactPage } from './globals/ContactPage'
 import { Homepage } from './globals/Homepage'
 import { SiteSettings } from './globals/SiteSettings'
-import { getS3Config } from './lib/aws/s3'
+import { getS3Config, joinCdnFileURL } from './lib/aws/s3'
 import { ensureDefaultAlbum } from './lib/content/default-album'
 import { ensureLegalPages } from './lib/content/legal-pages'
 import { migrations } from './migrations'
@@ -81,7 +81,7 @@ const storage = process.env.S3_BUCKET?.trim()
                 // this runs once per derivative and needs no size handling of
                 // its own. `prefix` is the per-document folder when one is set.
                 generateFileURL: ({ filename, prefix }) =>
-                  [cdnUrl, prefix, encodeURIComponent(filename)].filter(Boolean).join('/'),
+                  joinCdnFileURL(cdnUrl, filename, prefix),
               }
             : true,
         },
