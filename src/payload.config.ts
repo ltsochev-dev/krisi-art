@@ -47,19 +47,44 @@ const email = process.env.RESEND_API_KEY
  * single place env parsing happens, but it throws on missing values — hence the
  * guard before calling it.
  *
- * Files are still served through `/api/media/file/...`; the plugin streams them
- * from the bucket rather than exposing S3 URLs, which is why `next.config.ts`
- * needs no `images.remotePatterns` entry.
+ * How files are *served* then depends on whether `S3_CDN_URL` is set:
+ *
+ * - Set: `disablePayloadAccessControl` turns off Payload's file route and
+ *   `generateFileURL` rewrites every `url` (originals and every derivative) to
+ *   the CDN. Bytes go browser → CloudFront → bucket, and this server is out of
+ *   the image path entirely. `next.config.ts` needs the host in
+ *   `images.remotePatterns` for the `next/image` call sites.
+ * - Unset: files stream through `/api/media/file/...`, where the plugin pulls
+ *   each object from the bucket and pipes it to the client. Correct, and fine
+ *   locally, but it puts this process in the byte path for every thumbnail.
+ *
+ * Note the trade `disablePayloadAccessControl` makes: objects become fetchable
+ * by anyone holding the URL, bypassing the `media.read` check. That is safe for
+ * this collection specifically — `read` is already `anyone`, and the `enabled`
+ * readiness gate is enforced in `@/lib/content/gallery` rather than in access
+ * control (see the note on the field). A disabled image's URL still resolves; it
+ * simply never appears on the site.
  */
 const storage = process.env.S3_BUCKET?.trim()
   ? (() => {
-      const { bucket, endpoint, forcePathStyle, region } = getS3Config()
+      const { bucket, cdnUrl, endpoint, forcePathStyle, region } = getS3Config()
       const accessKeyId = process.env.AWS_ACCESS_KEY_ID?.trim()
       const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY?.trim()
 
       return s3Storage({
         bucket,
-        collections: { media: true },
+        collections: {
+          media: cdnUrl
+            ? {
+                disablePayloadAccessControl: true,
+                // `filename` arrives already resolved to the requested size, so
+                // this runs once per derivative and needs no size handling of
+                // its own. `prefix` is the per-document folder when one is set.
+                generateFileURL: ({ filename, prefix }) =>
+                  [cdnUrl, prefix, encodeURIComponent(filename)].filter(Boolean).join('/'),
+              }
+            : true,
+        },
         config: {
           // Omitted when absent so the default AWS provider chain still applies.
           ...(accessKeyId && secretAccessKey

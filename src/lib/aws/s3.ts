@@ -5,10 +5,34 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 export type S3Config = {
   bucket: string
+  /**
+   * Public base URL of a CDN in front of the bucket (a CloudFront distribution).
+   *
+   * When set, media URLs point straight at it and the bytes never pass through
+   * this server. Leave unset and uploads are streamed through
+   * `/api/media/file/...` instead, which is what keeps a checkout with no CDN
+   * working.
+   */
+  cdnUrl?: string
   /** Set for S3-compatible providers (MinIO, R2, Spaces); leave unset for real S3. */
   endpoint?: string
   forcePathStyle: boolean
   region: string
+}
+
+/**
+ * Accepts either a bare hostname or a full origin, and returns it without a
+ * trailing slash — so `d111.cloudfront.net`, `https://d111.cloudfront.net` and
+ * `https://d111.cloudfront.net/` all normalise to the same thing.
+ */
+const normaliseCdnUrl = (value: string | undefined): string | undefined => {
+  const trimmed = value?.trim().replace(/\/+$/, '')
+
+  if (!trimmed) {
+    return undefined
+  }
+
+  return trimmed.includes('://') ? trimmed : `https://${trimmed}`
 }
 
 class S3ConfigError extends Error {
@@ -37,6 +61,7 @@ export const getS3Config = (): S3Config => {
 
   cachedConfig = {
     bucket: required('S3_BUCKET'),
+    cdnUrl: normaliseCdnUrl(process.env.S3_CDN_URL),
     endpoint: process.env.S3_ENDPOINT?.trim() || undefined,
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
     region: required('S3_REGION'),
