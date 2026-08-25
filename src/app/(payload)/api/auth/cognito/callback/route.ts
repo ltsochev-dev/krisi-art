@@ -5,16 +5,13 @@ import { parseCookies } from 'payload/shared'
 import config from '@payload-config'
 
 import { getCognitoConfig } from '@/lib/auth/cognito/config'
+import { redirectToPath } from '@/lib/auth/cognito/redirect'
 import {
   CognitoTokenExchangeError,
   exchangeCodeForTokens,
   verifyIdToken,
 } from '@/lib/auth/cognito/oidc'
-import {
-  createSessionCookie,
-  provisionUser,
-  resolveRoles,
-} from '@/lib/auth/cognito/session'
+import { createSessionCookie, provisionUser, resolveRoles } from '@/lib/auth/cognito/session'
 import {
   buildExpiredStateCookie,
   OAUTH_STATE_COOKIE,
@@ -48,7 +45,7 @@ export const GET = async (request: Request): Promise<Response> => {
     cognito = getCognitoConfig()
   } catch (error) {
     console.error('[cognito] callback received but Cognito is not configured:', error)
-    return Response.redirect(new URL('/admin/login?cognitoError=config', request.url), 302)
+    return redirectToPath('/admin/login?cognitoError=config')
   }
 
   const headers = new Headers({ 'Cache-Control': 'no-store' })
@@ -56,10 +53,8 @@ export const GET = async (request: Request): Promise<Response> => {
   // The state cookie has served its purpose either way — always clear it.
   headers.append('Set-Cookie', buildExpiredStateCookie(cognito))
 
-  const fail = (code: FailureCode): Response => {
-    headers.set('Location', new URL(`/admin/login?cognitoError=${code}`, request.url).toString())
-    return new Response(null, { headers, status: 302 })
-  }
+  const fail = (code: FailureCode): Response =>
+    redirectToPath(`/admin/login?cognitoError=${code}`, headers)
 
   const providerError = searchParams.get('error')
 
@@ -124,9 +119,9 @@ export const GET = async (request: Request): Promise<Response> => {
     const user = await provisionUser({ claims, payload, roles })
 
     headers.append('Set-Cookie', await createSessionCookie({ payload, user }))
-    headers.set('Location', new URL(oauthState.redirect, request.url).toString())
 
-    return new Response(null, { headers, status: 302 })
+    // `oauthState.redirect` is a `getSafeRedirect` result — a path on this app.
+    return redirectToPath(oauthState.redirect, headers)
   } catch (error) {
     console.error('[cognito] sign-in failed:', error)
 

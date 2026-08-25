@@ -2,6 +2,7 @@ import { getSafeRedirect } from 'payload/shared'
 
 import { getCognitoConfig } from '@/lib/auth/cognito/config'
 import { buildAuthorizeUrl, createPkcePair, randomUrlSafeString } from '@/lib/auth/cognito/oidc'
+import { redirectToPath } from '@/lib/auth/cognito/redirect'
 import { buildStateCookie, sealOAuthState } from '@/lib/auth/cognito/state'
 
 export const dynamic = 'force-dynamic'
@@ -19,7 +20,7 @@ export const GET = async (request: Request): Promise<Response> => {
     config = getCognitoConfig()
   } catch (error) {
     console.error('[cognito] refusing to start login:', error)
-    return Response.redirect(new URL('/admin/login?cognitoError=config', request.url), 302)
+    return redirectToPath('/admin/login?cognitoError=config')
   }
 
   const redirect = getSafeRedirect({

@@ -33,7 +33,8 @@ export const GET = async (request: Request): Promise<Response> => {
   try {
     headers.set('Location', buildLogoutUrl(getCognitoConfig()))
   } catch {
-    headers.set('Location', new URL('/admin/login', request.url).toString())
+    // A path, not an absolute URL — see `@/lib/auth/cognito/redirect`.
+    headers.set('Location', '/admin/login')
   }
 
   return new Response(null, { headers, status: 302 })
