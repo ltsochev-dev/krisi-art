@@ -9,6 +9,13 @@ export const CACHE_TAGS = {
   artworks: 'artworks',
   contactPage: 'contact-page',
   homepage: 'homepage',
+  /**
+   * The public invoice page. Tagged by the client-facing route rather than per
+   * document: the set is small, the page is read by one person holding a link,
+   * and busting the lot on any invoicing edit is cheaper than reasoning about
+   * which of the invoice, its client or the settings global fed a given render.
+   */
+  invoices: 'invoices',
   media: 'media',
   pages: 'pages',
   siteSettings: 'site-settings',

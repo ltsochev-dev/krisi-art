@@ -9,12 +9,15 @@ import sharp from 'sharp'
 
 import { Albums } from './collections/Albums'
 import { Artworks } from './collections/Artworks'
+import { Clients } from './collections/Clients'
 import { ContactSubmissions } from './collections/ContactSubmissions'
+import { Invoices } from './collections/Invoices'
 import { Media } from './collections/Media'
 import { Tags } from './collections/Tags'
 import { Users } from './collections/Users'
 import { ContactPage } from './globals/ContactPage'
 import { Homepage } from './globals/Homepage'
+import { InvoiceSettings } from './globals/InvoiceSettings'
 import { SiteSettings } from './globals/SiteSettings'
 import { getS3Config, joinCdnFileURL } from './lib/aws/s3'
 import { ensureDefaultAlbum } from './lib/content/default-album'
@@ -80,8 +83,7 @@ const storage = process.env.S3_BUCKET?.trim()
                 // `filename` arrives already resolved to the requested size, so
                 // this runs once per derivative and needs no size handling of
                 // its own. `prefix` is the per-document folder when one is set.
-                generateFileURL: ({ filename, prefix }) =>
-                  joinCdnFileURL(cdnUrl, filename, prefix),
+                generateFileURL: ({ filename, prefix }) => joinCdnFileURL(cdnUrl, filename, prefix),
               }
             : true,
         },
@@ -121,8 +123,19 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Albums, Artworks, Tags, Media, ContactSubmissions, Users, Testimonials, Pages],
-  globals: [Homepage, ContactPage, SiteSettings],
+  collections: [
+    Albums,
+    Artworks,
+    Tags,
+    Media,
+    ContactSubmissions,
+    Users,
+    Testimonials,
+    Pages,
+    Clients,
+    Invoices,
+  ],
+  globals: [Homepage, ContactPage, SiteSettings, InvoiceSettings],
   // The app only talks to Payload through the Local API and REST, so the
   // GraphQL endpoint and its playground stay off.
   graphQL: {

@@ -9,6 +9,9 @@ import * as migration_20260824_144215_gallery_subtitle from './20260824_144215_g
 import * as migration_20260824_155112_orderable_albums_artworks from './20260824_155112_orderable_albums_artworks';
 import * as migration_20260824_193612_orderable_artworks_per_album from './20260824_193612_orderable_artworks_per_album';
 import * as migration_20260825_200000_orderable_testimonials from './20260825_200000_orderable_testimonials';
+import * as migration_20260827_071502_invoicing from './20260827_071502_invoicing';
+import * as migration_20260827_075943_invoice_language from './20260827_075943_invoice_language';
+import * as migration_20260827_080440_invoice_legal_note_en from './20260827_080440_invoice_legal_note_en';
 
 export const migrations = [
   {
@@ -59,11 +62,26 @@ export const migrations = [
   {
     up: migration_20260824_193612_orderable_artworks_per_album.up,
     down: migration_20260824_193612_orderable_artworks_per_album.down,
-    name: '20260824_193612_orderable_artworks_per_album'
+    name: '20260824_193612_orderable_artworks_per_album',
   },
   {
     up: migration_20260825_200000_orderable_testimonials.up,
     down: migration_20260825_200000_orderable_testimonials.down,
     name: '20260825_200000_orderable_testimonials',
+  },
+  {
+    up: migration_20260827_071502_invoicing.up,
+    down: migration_20260827_071502_invoicing.down,
+    name: '20260827_071502_invoicing',
+  },
+  {
+    up: migration_20260827_075943_invoice_language.up,
+    down: migration_20260827_075943_invoice_language.down,
+    name: '20260827_075943_invoice_language',
+  },
+  {
+    up: migration_20260827_080440_invoice_legal_note_en.up,
+    down: migration_20260827_080440_invoice_legal_note_en.down,
+    name: '20260827_080440_invoice_legal_note_en'
   },
 ];

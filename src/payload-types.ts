@@ -75,6 +75,8 @@ export interface Config {
     users: User;
     testimonials: Testimonial;
     pages: Page;
+    clients: Client;
+    invoices: Invoice;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -83,6 +85,9 @@ export interface Config {
   collectionsJoins: {
     albums: {
       artworks: 'artworks';
+    };
+    clients: {
+      invoices: 'invoices';
     };
   };
   collectionsSelect: {
@@ -94,6 +99,8 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     testimonials: TestimonialsSelect<false> | TestimonialsSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
+    clients: ClientsSelect<false> | ClientsSelect<true>;
+    invoices: InvoicesSelect<false> | InvoicesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -107,11 +114,13 @@ export interface Config {
     homepage: Homepage;
     'contact-page': ContactPage;
     'site-settings': SiteSetting;
+    'invoice-settings': InvoiceSetting;
   };
   globalsSelect: {
     homepage: HomepageSelect<false> | HomepageSelect<true>;
     'contact-page': ContactPageSelect<false> | ContactPageSelect<true>;
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+    'invoice-settings': InvoiceSettingsSelect<false> | InvoiceSettingsSelect<true>;
   };
   locale: null;
   widgets: {
@@ -436,6 +445,189 @@ export interface Page {
   createdAt: string;
 }
 /**
+ * Companies and individuals that get invoiced. A client with invoices cannot be deleted — archive them instead.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clients".
+ */
+export interface Client {
+  id: number;
+  /**
+   * A company invoice needs an ЕИК/БУЛСТАТ and a МОЛ; an individual needs neither.
+   */
+  kind: 'company' | 'individual';
+  /**
+   * The full legal name, exactly as it should print on the invoice.
+   */
+  name: string;
+  /**
+   * The company identifier from the Commercial Register.
+   */
+  eik?: string | null;
+  /**
+   * Only if the client is VAT-registered. Include the country prefix (BG…).
+   */
+  vatNumber?: string | null;
+  /**
+   * Материално отговорно лице — the person who signs for the company.
+   */
+  responsiblePerson?: string | null;
+  /**
+   * Street and number. City, postcode and country go in the fields below.
+   */
+  address: string;
+  city: string;
+  postalCode?: string | null;
+  country: string;
+  /**
+   * Where the invoice link gets sent.
+   */
+  email?: string | null;
+  phone?: string | null;
+  /**
+   * Internal. Never printed on an invoice.
+   */
+  notes?: string | null;
+  /**
+   * Archived clients stay on their old invoices but disappear from the picker when creating a new one.
+   */
+  archived?: boolean | null;
+  /**
+   * Every invoice issued to this client.
+   */
+  invoices?: {
+    docs?: (number | Invoice)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Drafts are freely editable and have no number. Issuing one assigns the next number in the sequence, freezes everything that prints on it, and records every later change in the Versions tab.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "invoices".
+ */
+export interface Invoice {
+  id: number;
+  /**
+   * Their details are copied onto this invoice when it is issued.
+   */
+  client: number | Client;
+  issueDate: string;
+  /**
+   * Leave blank to use the payment terms from Invoicing → Settings.
+   */
+  dueDate?: string | null;
+  placeOfIssue?: string | null;
+  paymentMethod?: ('bank' | 'card' | 'cash' | 'other') | null;
+  currency: 'EUR' | 'BGN' | 'USD' | 'GBP';
+  /**
+   * The whole client-facing invoice — labels, dates, number formats and the amount in words — is printed in this one language. Defaults to the language set under Invoicing → Settings.
+   */
+  language: 'bg' | 'en';
+  /**
+   * How many units of the invoice currency make one EUR, per the BNB rate on the issue date.
+   */
+  exchangeRate?: number | null;
+  /**
+   * What is being billed. Each row prints as one line on the invoice.
+   */
+  items?:
+    | {
+        /**
+         * What was delivered, in the client’s language.
+         */
+        description: string;
+        /**
+         * Fractions are fine — 2.5 hours, half a day.
+         */
+        quantity: number;
+        unit?: ('piece' | 'hour' | 'day' | 'month' | 'project') | null;
+        unitPrice: number;
+        /**
+         * Calculated.
+         */
+        total?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Optional. Taken off the subtotal as its own line, not spread across the prices.
+   */
+  discountPercent?: number | null;
+  subtotal?: number | null;
+  discountAmount?: number | null;
+  total?: number | null;
+  /**
+   * The “(словом)” line, generated from the total. Blank for currencies with no Bulgarian convention.
+   */
+  totalInWords?: string | null;
+  /**
+   * The total converted at the rate above. Bulgaria keeps its books in EUR.
+   */
+  baseTotal?: number | null;
+  /**
+   * Printed on the invoice, under the totals. Frozen when the invoice is issued, like everything else the client sees.
+   */
+  notes?: string | null;
+  /**
+   * Never printed, never frozen — editable for as long as the invoice exists.
+   */
+  internalNotes?: string | null;
+  seller?: {
+    legalName?: string | null;
+    identifier?: string | null;
+    activity?: string | null;
+    address?: string | null;
+    city?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    website?: string | null;
+    bankName?: string | null;
+    iban?: string | null;
+    bic?: string | null;
+    legalNote?: string | null;
+  };
+  billTo?: {
+    name?: string | null;
+    kind?: string | null;
+    eik?: string | null;
+    vatNumber?: string | null;
+    responsiblePerson?: string | null;
+    address?: string | null;
+    city?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+    email?: string | null;
+  };
+  /**
+   * Moving off “Чернова” issues the invoice: it takes the next number and stops being editable. There is no way back.
+   */
+  status: 'draft' | 'issued' | 'sent' | 'paid' | 'cancelled';
+  /**
+   * Assigned from the sequence when the invoice is issued.
+   */
+  invoiceNumber?: string | null;
+  /**
+   * Defaults to today when the status is set to paid.
+   */
+  paidDate?: string | null;
+  /**
+   * The client-facing address of this invoice. Generated once, never changes.
+   */
+  uuid?: string | null;
+  /**
+   * Send this to the client. It works for anyone holding the link.
+   */
+  publicUrl?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -490,6 +682,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'pages';
         value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'clients';
+        value: number | Client;
+      } | null)
+    | ({
+        relationTo: 'invoices';
+        value: number | Invoice;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -718,6 +918,99 @@ export interface PagesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clients_select".
+ */
+export interface ClientsSelect<T extends boolean = true> {
+  kind?: T;
+  name?: T;
+  eik?: T;
+  vatNumber?: T;
+  responsiblePerson?: T;
+  address?: T;
+  city?: T;
+  postalCode?: T;
+  country?: T;
+  email?: T;
+  phone?: T;
+  notes?: T;
+  archived?: T;
+  invoices?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "invoices_select".
+ */
+export interface InvoicesSelect<T extends boolean = true> {
+  client?: T;
+  issueDate?: T;
+  dueDate?: T;
+  placeOfIssue?: T;
+  paymentMethod?: T;
+  currency?: T;
+  language?: T;
+  exchangeRate?: T;
+  items?:
+    | T
+    | {
+        description?: T;
+        quantity?: T;
+        unit?: T;
+        unitPrice?: T;
+        total?: T;
+        id?: T;
+      };
+  discountPercent?: T;
+  subtotal?: T;
+  discountAmount?: T;
+  total?: T;
+  totalInWords?: T;
+  baseTotal?: T;
+  notes?: T;
+  internalNotes?: T;
+  seller?:
+    | T
+    | {
+        legalName?: T;
+        identifier?: T;
+        activity?: T;
+        address?: T;
+        city?: T;
+        postalCode?: T;
+        country?: T;
+        email?: T;
+        phone?: T;
+        website?: T;
+        bankName?: T;
+        iban?: T;
+        bic?: T;
+        legalNote?: T;
+      };
+  billTo?:
+    | T
+    | {
+        name?: T;
+        kind?: T;
+        eik?: T;
+        vatNumber?: T;
+        responsiblePerson?: T;
+        address?: T;
+        city?: T;
+        postalCode?: T;
+        country?: T;
+        email?: T;
+      };
+  status?: T;
+  invoiceNumber?: T;
+  paidDate?: T;
+  uuid?: T;
+  publicUrl?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv_select".
  */
 export interface PayloadKvSelect<T extends boolean = true> {
@@ -925,6 +1218,85 @@ export interface SiteSetting {
   createdAt?: string | null;
 }
 /**
+ * The artist’s own details as they print on every invoice, the bank account, and the number sequence.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "invoice-settings".
+ */
+export interface InvoiceSetting {
+  id: number;
+  seller: {
+    /**
+     * The name registered with the NRA, not the artistic alias.
+     */
+    legalName: string;
+    /**
+     * The BULSTAT number issued for the freelance registration.
+     */
+    identifier: string;
+    /**
+     * e.g. “Свободна професия — художник”.
+     */
+    activity?: string | null;
+    address: string;
+    city: string;
+    postalCode?: string | null;
+    country: string;
+    email?: string | null;
+    phone?: string | null;
+    website?: string | null;
+  };
+  /**
+   * Printed under the total on Bulgarian invoices. The default is the statement a person who is not registered under the VAT act is required to put on an invoice. Change it only on your accountant’s advice — if you ever register for VAT, this is where that changes.
+   */
+  legalNote?: string | null;
+  /**
+   * The same statement for invoices printed in English. Keep the reference to the Bulgarian statute — that is what makes it a legal statement rather than a remark. Left blank, English invoices fall back to the Bulgarian wording above.
+   */
+  legalNoteEn?: string | null;
+  /**
+   * Optional. Shown top-left on the invoice.
+   */
+  logo?: (number | null) | Media;
+  /**
+   * Optional scan, shown above the issuer’s name. Unlike the text fields, the logo and signature are read live rather than frozen per invoice — they are branding, not legal identity.
+   */
+  signature?: (number | null) | Media;
+  bank?: {
+    name?: string | null;
+    iban?: string | null;
+    bic?: string | null;
+  };
+  numbering: {
+    /**
+     * The sequence value the next issued invoice will take, padded to ten digits. Set this once, before issuing the first invoice, to continue a sequence started elsewhere — after that it advances on its own. Lowering it cannot create a duplicate: the number actually used is always at least one more than the highest already issued.
+     */
+    nextNumber: number;
+  };
+  /**
+   * Prefilled on every new invoice. Each one stays editable per invoice.
+   */
+  defaults?: {
+    currency?: ('EUR' | 'BGN' | 'USD' | 'GBP') | null;
+    /**
+     * Days from the issue date to the due date.
+     */
+    paymentTermsDays?: number | null;
+    placeOfIssue?: string | null;
+    paymentMethod?: ('bank' | 'card' | 'cash' | 'other') | null;
+    /**
+     * Which language new invoices are printed in. Set per invoice as well.
+     */
+    language?: ('bg' | 'en') | null;
+    /**
+     * Printed at the foot of the invoice, under the legal note.
+     */
+    notes?: string | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "homepage_select".
  */
@@ -1023,6 +1395,55 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         metaTitle?: T;
         metaDescription?: T;
         ogImage?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "invoice-settings_select".
+ */
+export interface InvoiceSettingsSelect<T extends boolean = true> {
+  seller?:
+    | T
+    | {
+        legalName?: T;
+        identifier?: T;
+        activity?: T;
+        address?: T;
+        city?: T;
+        postalCode?: T;
+        country?: T;
+        email?: T;
+        phone?: T;
+        website?: T;
+      };
+  legalNote?: T;
+  legalNoteEn?: T;
+  logo?: T;
+  signature?: T;
+  bank?:
+    | T
+    | {
+        name?: T;
+        iban?: T;
+        bic?: T;
+      };
+  numbering?:
+    | T
+    | {
+        nextNumber?: T;
+      };
+  defaults?:
+    | T
+    | {
+        currency?: T;
+        paymentTermsDays?: T;
+        placeOfIssue?: T;
+        paymentMethod?: T;
+        language?: T;
+        notes?: T;
       };
   updatedAt?: T;
   createdAt?: T;

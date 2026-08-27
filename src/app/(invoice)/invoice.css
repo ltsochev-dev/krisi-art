@@ -1,0 +1,482 @@
+/**
+ * The printed invoice's stylesheet — deliberately plain CSS, and deliberately not
+ * the site's.
+ *
+ * Two reasons this does not import `../(frontend)/globals.css`:
+ *
+ * 1. That stylesheet defines a palette that is dark unconditionally, and even
+ *    redefines Tailwind's `dark:` variant to a bare `&` so a single design can
+ *    never fork. An invoice has the opposite requirement — it has to be black on
+ *    white, because it exists to be printed and forwarded.
+ * 2. There is nothing to reuse. This page is one document layout with a dozen
+ *    rules; Tailwind's value is in composing a design system across many
+ *    components, and there is only one component here.
+ *
+ * Everything is sized in `mm` and `pt` rather than `px`, so the on-screen page and
+ * the paper agree.
+ */
+
+:root {
+  --ink: #16161a;
+  --ink-soft: #5a5a63;
+  --rule: #d9d9df;
+  --rule-strong: #16161a;
+  --paper: #ffffff;
+  --desk: #ececed;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--desk);
+  color: var(--ink);
+  font-family: var(--font-sans-family), 'Inter', system-ui, sans-serif;
+  font-size: 10pt;
+  line-height: 1.45;
+  margin: 0;
+  /* Kerning and ligatures off: an invoice is read for its digits, and lining
+     figures that line up column-to-column matter more than typographic polish. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- The sheet ----------------------------------------------------------- */
+
+.sheet {
+  background: var(--paper);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  margin: 12mm auto;
+  max-width: 210mm;
+  padding: 16mm;
+}
+
+.sheet--void {
+  /* A cancelled invoice still has to be readable — it is evidence that the
+     number was consumed — so it is muted rather than hidden. */
+  opacity: 0.65;
+}
+
+/* --- Captions ------------------------------------------------------------ */
+
+/**
+ * Small, uppercase and grey — for the one or two places that need a caption above
+ * a value rather than a label beside it. The signature rule is the only user.
+ *
+ * This is what is left of the bilingual layout the page started as, where every
+ * label carried an English gloss in this style. The invoice now prints in one
+ * language, chosen per document, so a gloss would be a translation of a line the
+ * reader can already read.
+ */
+.caption {
+  color: var(--ink-soft);
+  display: block;
+  font-size: 6.5pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* --- Header -------------------------------------------------------------- */
+
+.head {
+  align-items: flex-start;
+  border-bottom: 1.5pt solid var(--rule-strong);
+  display: flex;
+  gap: 10mm;
+  justify-content: space-between;
+  padding-bottom: 6mm;
+}
+
+.head__logo {
+  max-height: 22mm;
+  max-width: 55mm;
+  object-fit: contain;
+}
+
+.head__meta {
+  margin-left: auto;
+  text-align: right;
+}
+
+.head__title {
+  font-size: 18pt;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.head__number {
+  font-size: 13pt;
+  font-variant-numeric: tabular-nums;
+  margin: 2mm 0 0;
+}
+
+.head__dates {
+  margin: 4mm 0 0;
+}
+
+.head__dates div {
+  display: flex;
+  gap: 4mm;
+  justify-content: flex-end;
+}
+
+.head__dates dt {
+  color: var(--ink-soft);
+  font-size: 7.5pt;
+  text-transform: uppercase;
+}
+
+.head__dates dd {
+  margin: 0;
+  min-width: 24mm;
+  text-align: right;
+}
+
+/* --- Status banner ------------------------------------------------------- */
+
+.banner {
+  border: 1.5pt solid var(--rule-strong);
+  font-size: 11pt;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  margin-bottom: 8mm;
+  padding: 3mm 4mm;
+  text-align: center;
+}
+
+.banner small {
+  display: block;
+  font-size: 7.5pt;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin-top: 1mm;
+  text-transform: none;
+}
+
+/* --- Parties ------------------------------------------------------------- */
+
+.parties {
+  display: grid;
+  gap: 10mm;
+  grid-template-columns: 1fr 1fr;
+  margin: 8mm 0;
+}
+
+.party__heading {
+  border-bottom: 0.5pt solid var(--rule);
+  font-size: 8pt;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin: 0 0 3mm;
+  padding-bottom: 1.5mm;
+  text-transform: uppercase;
+}
+
+.party__name {
+  font-size: 11pt;
+  font-weight: 600;
+  margin: 0 0 1.5mm;
+}
+
+.party__rows {
+  margin: 0;
+}
+
+.party__rows > div {
+  display: flex;
+  gap: 2mm;
+}
+
+.party__rows dt {
+  color: var(--ink-soft);
+  flex: 0 0 30mm;
+  font-size: 8pt;
+}
+
+.party__rows dd {
+  margin: 0;
+}
+
+.party__address {
+  margin: 0 0 1.5mm;
+  white-space: pre-line;
+}
+
+/* --- Line items --------------------------------------------------------- */
+
+.lines-wrap {
+  /* A long description or a large total must never widen the page itself. */
+  overflow-x: auto;
+}
+
+.lines {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.lines th {
+  border-bottom: 1pt solid var(--rule-strong);
+  font-size: 8pt;
+  font-weight: 600;
+  padding: 2mm 2mm 2mm 0;
+  text-align: left;
+  vertical-align: bottom;
+}
+
+.lines td {
+  border-bottom: 0.5pt solid var(--rule);
+  padding: 2.5mm 2mm 2.5mm 0;
+  vertical-align: top;
+}
+
+.lines th:last-child,
+.lines td:last-child {
+  padding-right: 0;
+}
+
+.lines .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.lines .idx {
+  color: var(--ink-soft);
+  width: 8mm;
+}
+
+.lines .desc {
+  white-space: pre-line;
+}
+
+/* --- Summary ------------------------------------------------------------ */
+
+.summary {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6mm;
+}
+
+.summary__table {
+  border-collapse: collapse;
+  min-width: 85mm;
+}
+
+.summary__table td {
+  padding: 1.5mm 0 1.5mm 6mm;
+}
+
+.summary__table td:first-child {
+  color: var(--ink-soft);
+  font-size: 8pt;
+  padding-left: 0;
+}
+
+.summary__table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.summary__total td {
+  border-top: 1pt solid var(--rule-strong);
+  font-size: 12pt;
+  font-weight: 600;
+  padding-top: 2.5mm;
+}
+
+.summary__total td:first-child {
+  color: var(--ink);
+  font-size: 9pt;
+}
+
+.summary__base td {
+  color: var(--ink-soft);
+  font-size: 8pt;
+}
+
+.words {
+  margin: 4mm 0 0;
+}
+
+.words dt {
+  color: var(--ink-soft);
+  font-size: 8pt;
+}
+
+.words dd {
+  font-style: italic;
+  margin: 0.5mm 0 0;
+}
+
+/* --- Payment, notes, signature ------------------------------------------ */
+
+.blocks {
+  display: grid;
+  gap: 10mm;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 10mm;
+}
+
+.block__heading {
+  font-size: 8pt;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin: 0 0 2mm;
+  text-transform: uppercase;
+}
+
+.block__rows > div {
+  display: flex;
+  gap: 2mm;
+}
+
+.block__rows dt {
+  color: var(--ink-soft);
+  flex: 0 0 30mm;
+  font-size: 8pt;
+}
+
+.block__rows dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.legal {
+  border-top: 0.5pt solid var(--rule);
+  margin-top: 10mm;
+  padding-top: 4mm;
+}
+
+.legal p {
+  margin: 0 0 2mm;
+  white-space: pre-line;
+}
+
+.legal p:last-child {
+  color: var(--ink-soft);
+  margin-bottom: 0;
+}
+
+.sign {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14mm;
+}
+
+.sign__box {
+  min-width: 60mm;
+  text-align: center;
+}
+
+.sign__image {
+  display: block;
+  margin: 0 auto 1mm;
+  max-height: 18mm;
+  max-width: 55mm;
+  object-fit: contain;
+}
+
+.sign__rule {
+  border-top: 0.5pt solid var(--rule-strong);
+  padding-top: 1.5mm;
+}
+
+.sign__name {
+  font-size: 9pt;
+}
+
+/* --- The print button --------------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  gap: 3mm;
+  justify-content: flex-end;
+  margin: 8mm auto 0;
+  max-width: 210mm;
+}
+
+.toolbar button {
+  background: var(--ink);
+  border: 0;
+  border-radius: 2mm;
+  color: var(--paper);
+  cursor: pointer;
+  font: inherit;
+  padding: 2.5mm 6mm;
+}
+
+.toolbar button:hover {
+  background: var(--ink-soft);
+}
+
+/* --- Not found ---------------------------------------------------------- */
+
+.missing {
+  margin: 30mm auto;
+  max-width: 120mm;
+  text-align: center;
+}
+
+.missing h1 {
+  font-size: 14pt;
+  margin: 0 0 3mm;
+}
+
+.missing p {
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* --- Print -------------------------------------------------------------- */
+
+@page {
+  margin: 12mm;
+  size: A4;
+}
+
+@media print {
+  body {
+    background: var(--paper);
+  }
+
+  .sheet {
+    box-shadow: none;
+    margin: 0;
+    max-width: none;
+    padding: 0;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* A line item must not be split across a page boundary; the totals must not be
+     orphaned from the table they total. */
+  .lines tr,
+  .summary,
+  .sign {
+    break-inside: avoid;
+  }
+
+  .sheet--void {
+    opacity: 1;
+  }
+}
+
+/**
+ * Narrow screens. The sheet keeps its A4 proportions when printed either way, so
+ * this only relaxes the on-screen padding and drops the two-column blocks to one.
+ */
+@media screen and (max-width: 600px) {
+  .sheet {
+    margin: 0;
+    padding: 8mm;
+  }
+
+  .blocks,
+  .parties {
+    gap: 6mm;
+    grid-template-columns: 1fr;
+  }
+}

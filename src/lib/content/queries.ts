@@ -20,6 +20,7 @@ import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 
 import type { Album, ContactPage, Homepage, Page, SiteSetting, Testimonial } from '@/payload-types'
+import type { PublicInvoice } from '@/lib/content/invoices'
 import type {
   GalleryAlbumSummary,
   GalleryArtwork,
@@ -36,6 +37,7 @@ import {
   takePerAlbum,
   toGalleryImage,
 } from '@/lib/content/gallery'
+import { findInvoiceByUuid } from '@/lib/content/invoices'
 import config from '@/payload.config'
 
 export type {
@@ -341,4 +343,28 @@ export const getGalleryAlbum = unstable_cache(
   },
   ['gallery-album'],
   { tags: [CACHE_TAGS.albums, CACHE_TAGS.artworks, CACHE_TAGS.media] },
+)
+
+// --- Invoices --------------------------------------------------------------
+
+/**
+ * An invoice by the UUID in its client-facing URL, or `null` when there is none.
+ *
+ * The one helper here that is not about published content, and the one that does
+ * not filter on a `published` flag — because there is no such flag to filter on.
+ * The invoice's access boundary is the unguessable UUID itself, which is why the
+ * finder is called with the id from the URL and nothing else; see the note at the
+ * top of `@/lib/content/invoices`.
+ *
+ * Tagged with `media` as well as `invoices`, since the logo and the signature are
+ * read live off the settings global rather than frozen per invoice.
+ */
+export const getInvoiceByUuid = unstable_cache(
+  async (uuid: string): Promise<null | PublicInvoice> => {
+    const payload = await payloadInstance()
+
+    return await findInvoiceByUuid({ payload, uuid })
+  },
+  ['invoice'],
+  { tags: [CACHE_TAGS.invoices, CACHE_TAGS.media] },
 )
