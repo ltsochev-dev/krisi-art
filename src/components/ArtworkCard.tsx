@@ -65,7 +65,7 @@ const ArtworkCard = ({ artwork, index, onOpen }: ArtworkCardProps) => {
             type="button"
             onClick={onOpen}
             aria-label={`View ${artwork.title} enlarged`}
-            className="absolute inset-0 z-30 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset focus-visible:outline-none"
+            className="absolute inset-0 z-30 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none focus-visible:ring-inset"
           />
         )}
       </div>

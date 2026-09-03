@@ -304,9 +304,7 @@ describe('portfolio content', () => {
     it('excludes artworks whose image is not enabled yet', async () => {
       const result = await findGalleryArtworks({ albumSlugs: [first.slug], payload })
 
-      expect(result.artworks.map((artwork) => artwork.title)).not.toContain(
-        `${PREFIX} A-not-ready`,
-      )
+      expect(result.artworks.map((artwork) => artwork.title)).not.toContain(`${PREFIX} A-not-ready`)
       // Filtered in the query, not after it, so the count matches the rows.
       expect(result.totalDocs).toBe(result.artworks.length)
     })
@@ -362,10 +360,7 @@ describe('portfolio content', () => {
         // `first` holds A0 and A2, `second` holds B0 and B1.
         const capped = takePerAlbum(result.artworks, 1)
 
-        expect(capped.map((artwork) => artwork.title)).toEqual([
-          `${PREFIX} A0`,
-          `${PREFIX} B0`,
-        ])
+        expect(capped.map((artwork) => artwork.title)).toEqual([`${PREFIX} A0`, `${PREFIX} B0`])
       })
 
       it('is a ceiling, not a quota — a thin album never pulls extras', async () => {
@@ -384,9 +379,7 @@ describe('portfolio content', () => {
           payload,
         }).then((result) => result.artworks)
 
-        expect(takePerAlbum(artworks, 5).map((a) => a.title)).toEqual(
-          artworks.map((a) => a.title),
-        )
+        expect(takePerAlbum(artworks, 5).map((a) => a.title)).toEqual(artworks.map((a) => a.title))
       })
     })
   })

@@ -9,16 +9,16 @@ Resend for transactional email. It deploys as a single standalone container.
 
 ## Stack
 
-| Concern     | Choice                                                      |
-| ----------- | ----------------------------------------------------------- |
-| Framework   | Next.js 16 (App Router, `output: 'standalone'`)             |
-| CMS         | Payload 3 (`@payloadcms/next`), Lexical rich text            |
-| Database    | SQLite (`@payloadcms/db-sqlite`)                             |
-| Media       | S3 (`@payloadcms/storage-s3`), local disk as fallback        |
-| Auth        | AWS Cognito Hosted UI (OIDC + PKCE) — no local passwords     |
-| Email       | Resend (`@payloadcms/email-resend`)                          |
-| Tests       | Vitest (integration), Playwright (e2e)                       |
-| Node / pkg  | Node ≥ 20.9, pnpm 11                                         |
+| Concern    | Choice                                                   |
+| ---------- | -------------------------------------------------------- |
+| Framework  | Next.js 16 (App Router, `output: 'standalone'`)          |
+| CMS        | Payload 3 (`@payloadcms/next`), Lexical rich text        |
+| Database   | SQLite (`@payloadcms/db-sqlite`)                         |
+| Media      | S3 (`@payloadcms/storage-s3`), local disk as fallback    |
+| Auth       | AWS Cognito Hosted UI (OIDC + PKCE) — no local passwords |
+| Email      | Resend (`@payloadcms/email-resend`)                      |
+| Tests      | Vitest (integration), Playwright (e2e)                   |
+| Node / pkg | Node ≥ 20.9, pnpm 11                                     |
 
 ## Getting started
 
@@ -42,19 +42,19 @@ and the optional S3-compatible endpoint overrides.
 
 ## Scripts
 
-| Command             | What it does                                              |
-| ------------------- | --------------------------------------------------------- |
-| `pnpm dev`          | Dev server. `pnpm devsafe` clears `.next` first.           |
-| `pnpm build`        | Production build (standalone output).                      |
-| `pnpm start`        | Serve the production build.                                |
-| `pnpm lint`         | ESLint.                                                    |
-| `pnpm test:int`     | Vitest integration tests (`tests/int`).                    |
-| `pnpm test:e2e`     | Playwright e2e tests (`tests/e2e`).                        |
-| `pnpm test`         | Both suites.                                               |
-| `pnpm generate:types` | Regenerate `src/payload-types.ts` after schema changes.  |
-| `pnpm generate:importmap` | Rebuild the admin import map after adding components. |
-| `pnpm payload`      | Payload CLI (e.g. `pnpm payload migrate:create <name>`).   |
-| `pnpm seed:media <dir>` | Bulk-import an album folder tree (`--dry-run` supported). |
+| Command                   | What it does                                              |
+| ------------------------- | --------------------------------------------------------- |
+| `pnpm dev`                | Dev server. `pnpm devsafe` clears `.next` first.          |
+| `pnpm build`              | Production build (standalone output).                     |
+| `pnpm start`              | Serve the production build.                               |
+| `pnpm lint`               | ESLint.                                                   |
+| `pnpm test:int`           | Vitest integration tests (`tests/int`).                   |
+| `pnpm test:e2e`           | Playwright e2e tests (`tests/e2e`).                       |
+| `pnpm test`               | Both suites.                                              |
+| `pnpm generate:types`     | Regenerate `src/payload-types.ts` after schema changes.   |
+| `pnpm generate:importmap` | Rebuild the admin import map after adding components.     |
+| `pnpm payload`            | Payload CLI (e.g. `pnpm payload migrate:create <name>`).  |
+| `pnpm seed:media <dir>`   | Bulk-import an album folder tree (`--dry-run` supported). |
 
 ## Content model
 
@@ -98,7 +98,7 @@ from the bucket by the storage plugin, so no S3 URL is ever exposed and
 **Contact form.** A server action with hand-rolled validation (`@/lib/validation/contact`), a honeypot field and
 an in-memory sliding-window rate limiter (`@/lib/rate-limit`). The limiter is
 per-process and deliberately so: this deploys as a single container. Recipients
-come from *Settings → Contact Page → Recipients*, falling back to
+come from _Settings → Contact Page → Recipients_, falling back to
 `CONTACT_NOTIFY_EMAIL` and then to `RESEND_FROM_ADDRESS`.
 
 ## Authentication
@@ -232,25 +232,86 @@ cd /opt/krisi-art
 IMAGE_TAG=<previous-sha> docker compose --env-file .env.deploy up -d
 ```
 
+### TLS, HSTS and the canonical host
+
+The container speaks plain HTTP on `3000` and is deliberately unaware of TLS.
+Certificates, the `Strict-Transport-Security` header and the `www` redirect all
+belong to the reverse proxy in front of it — that is the layer that terminates
+TLS, and putting either in the app would mean a per-request hop that only
+re-derives what the proxy already knows.
+
+`www` is redirected to the apex rather than the other way round, and `APP_URL`
+must be the apex form to match: the canonical URLs in `<head>`, the `Sitemap:`
+line in `/robots.txt` and every `<loc>` in `/sitemap.xml` are all built from it,
+so a `www` origin there would point crawlers at the hostname being redirected
+away from.
+
+nginx:
+
+```nginx
+# www -> apex. 308 rather than 301: it is the permanent redirect that also
+# guarantees the method and body survive, which matters for the contact form.
+server {
+    listen 443 ssl;
+    server_name www.kristinakostova.com;
+    # Certificate required here too — a browser validates TLS before it ever
+    # sees the redirect.
+    return 308 https://kristinakostova.com$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name kristinakostova.com;
+
+    # Deliberately short to begin with. Verify that every path — the site, the
+    # admin, the CloudFront media, anything else on a subdomain — is reachable
+    # over HTTPS, then raise it to 63072000 (two years). Ramping up is the point:
+    # a browser that has cached a long max-age against a broken subdomain cannot
+    # be told to forget it.
+    #
+    # `always` so the header is sent on error responses too, not just 2xx/3xx.
+    add_header Strict-Transport-Security "max-age=300; includeSubDomains" always;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Port 80 exists only to hand both hostnames to HTTPS.
+server {
+    listen 80;
+    server_name kristinakostova.com www.kristinakostova.com;
+    return 308 https://kristinakostova.com$request_uri;
+}
+```
+
+Do not add `preload` to the header. It enrolls the domain in a list baked into
+browser binaries: removal takes months, and every subdomain must serve valid
+HTTPS for as long as it is listed.
+
 ### Repository configuration
 
 Secrets (**Settings → Secrets and variables → Actions → Secrets**):
 
-| Secret | Purpose |
-| --- | --- |
-| `DEPLOY_SSH_KEY` | Private key, PEM, no passphrase. Its public half goes in the deploy user's `~/.ssh/authorized_keys`. |
-| `DEPLOY_HOST` | VPS hostname or IP. |
-| `DEPLOY_USER` | SSH user; must be able to run `docker`. |
+| Secret               | Purpose                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `DEPLOY_SSH_KEY`     | Private key, PEM, no passphrase. Its public half goes in the deploy user's `~/.ssh/authorized_keys`.                    |
+| `DEPLOY_HOST`        | VPS hostname or IP.                                                                                                     |
+| `DEPLOY_USER`        | SSH user; must be able to run `docker`.                                                                                 |
 | `DEPLOY_KNOWN_HOSTS` | Optional but recommended: `ssh-keyscan -H <host>` output. Without it the host key is trusted on first use on every run. |
 
 Variables (same page, **Variables** tab) — all optional:
 
-| Variable | Default |
-| --- | --- |
-| `DEPLOY_DIR` | `/opt/krisi-art` |
-| `DEPLOY_PORT` | `22` |
-| `DEPLOY_SERVICE` | `app` |
-| `APP_URL` | unset; recorded as the deployment's environment URL |
+| Variable         | Default                                             |
+| ---------------- | --------------------------------------------------- |
+| `DEPLOY_DIR`     | `/opt/krisi-art`                                    |
+| `DEPLOY_PORT`    | `22`                                                |
+| `DEPLOY_SERVICE` | `app`                                               |
+| `APP_URL`        | unset; recorded as the deployment's environment URL |
 
 No registry credentials live on the VPS. The deploy step pipes the workflow
 run's own `GITHUB_TOKEN` over SSH, logs into ghcr.io with it and logs out again

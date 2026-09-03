@@ -152,10 +152,7 @@ export const findPublishedAlbumsBySlug = async ({
  * rows per group" without a window function, and the alternative — one query
  * per album — trades a single cached read for one per chip.
  */
-export const takePerAlbum = (
-  artworks: GalleryArtwork[],
-  perAlbum: number,
-): GalleryArtwork[] => {
+export const takePerAlbum = (artworks: GalleryArtwork[], perAlbum: number): GalleryArtwork[] => {
   const taken = new Map<string, number>()
 
   return artworks.filter((artwork) => {

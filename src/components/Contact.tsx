@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'motion/react'
-import { Mail, Send } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import { getSiteSettings } from '@/lib/content/queries'
 import SocialIcon from './SocialIcon'
 

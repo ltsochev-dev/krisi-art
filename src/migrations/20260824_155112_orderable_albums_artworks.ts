@@ -24,7 +24,8 @@ const BASE_36 = '0123456789abcdefghijklmnopqrstuvwxyz'
  * `_order`. `ROW_NUMBER()` needs SQLite 3.25 and `UPDATE … FROM` needs 3.33;
  * both long predate the bundled driver.
  */
-const backfillOrder = (table: string, orderBy: string) => sql.raw(`
+const backfillOrder = (table: string, orderBy: string) =>
+  sql.raw(`
   UPDATE \`${table}\` SET \`_order\` = 'c'
     || substr('${BASE_36}', ((ranked.rank / 1296) % 36) + 1, 1)
     || substr('${BASE_36}', ((ranked.rank / 36) % 36) + 1, 1)
@@ -36,7 +37,8 @@ const backfillOrder = (table: string, orderBy: string) => sql.raw(`
 `)
 
 /** The inverse: renumber `sort_order` 0..n-1 from the current `_order`. */
-const backfillSortOrder = (table: string) => sql.raw(`
+const backfillSortOrder = (table: string) =>
+  sql.raw(`
   UPDATE \`${table}\` SET \`sort_order\` = ranked.rank
   FROM (
     SELECT \`id\`, ROW_NUMBER() OVER (ORDER BY \`_order\`, \`title\`) - 1 AS rank FROM \`${table}\`

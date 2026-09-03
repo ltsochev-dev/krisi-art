@@ -46,9 +46,7 @@ test.describe('Admin Panel', () => {
     await expect(editViewArtifact).toBeVisible()
   })
 
-  test('the login screen offers Cognito only, with no local password form', async ({
-    browser,
-  }) => {
+  test('the login screen offers Cognito only, with no local password form', async ({ browser }) => {
     const anonymous = await browser.newContext()
     const anonymousPage = await anonymous.newPage()
 

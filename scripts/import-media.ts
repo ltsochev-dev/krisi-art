@@ -235,8 +235,13 @@ const main = async (): Promise<void> => {
   const payload = await getPayload({ config: await config })
   const counts: Counts = { albums: 0, artworks: 0, media: 0, skipped: 0 }
 
-  const directories = entries.filter((entry) => entry.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))
-  const looseFiles = entries.filter((entry) => entry.isFile()).map((entry) => entry.name).sort()
+  const directories = entries
+    .filter((entry) => entry.isDirectory())
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const looseFiles = entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .sort()
 
   for (const directory of directories) {
     const albumTitle = toTitleCase(directory.name)

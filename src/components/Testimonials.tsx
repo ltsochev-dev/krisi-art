@@ -180,7 +180,7 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
             tabIndex={0}
             // The negative margin lets cards run to the edge of the container on
             // small screens while `scroll-px` keeps the snap points inset.
-            className="-mx-6 flex snap-x snap-mandatory gap-6 overflow-x-auto scroll-px-6 px-6 py-4 [scrollbar-width:none] focus-visible:outline-none [&::-webkit-scrollbar]:hidden"
+            className="-mx-6 flex snap-x snap-mandatory scroll-px-6 [scrollbar-width:none] gap-6 overflow-x-auto px-6 py-4 focus-visible:outline-none [&::-webkit-scrollbar]:hidden"
           >
             {testimonials.map((testimonial, index) => (
               <figure

@@ -190,9 +190,9 @@ describe('Cognito group to role mapping', () => {
 
   it('de-duplicates when two groups map to the same role', () => {
     const shared = { ...config, roleByGroup: { a: 'admin' as const, b: 'admin' as const } }
-    expect(resolveRoles({ claims: { 'cognito:groups': ['a', 'b'] } as never, config: shared })).toEqual(
-      ['admin'],
-    )
+    expect(
+      resolveRoles({ claims: { 'cognito:groups': ['a', 'b'] } as never, config: shared }),
+    ).toEqual(['admin'])
   })
 })
 

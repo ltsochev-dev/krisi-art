@@ -136,10 +136,8 @@ export const getCognitoConfig = (): CognitoConfig => {
     issuer,
     jwksUri: `${issuer}/.well-known/jwks.json`,
     logoutEndpoint: `${domain}/logout`,
-    logoutRedirectUri:
-      process.env.COGNITO_LOGOUT_REDIRECT_URI?.trim() || `${appUrl}/admin/login`,
-    redirectUri:
-      process.env.COGNITO_REDIRECT_URI?.trim() || `${appUrl}/api/auth/cognito/callback`,
+    logoutRedirectUri: process.env.COGNITO_LOGOUT_REDIRECT_URI?.trim() || `${appUrl}/admin/login`,
+    redirectUri: process.env.COGNITO_REDIRECT_URI?.trim() || `${appUrl}/api/auth/cognito/callback`,
     region,
     roleByGroup: buildRoleByGroup(),
     scopes: (process.env.COGNITO_SCOPES?.trim() || 'openid email profile').split(/\s+/),

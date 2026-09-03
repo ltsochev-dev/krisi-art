@@ -14,9 +14,7 @@ describe('checkRateLimit', () => {
   })
 
   it('allows requests up to the limit', () => {
-    const results = Array.from({ length: 3 }, () =>
-      checkRateLimit({ key: 'a', ...WINDOW }).allowed,
-    )
+    const results = Array.from({ length: 3 }, () => checkRateLimit({ key: 'a', ...WINDOW }).allowed)
 
     expect(results).toEqual([true, true, true])
   })

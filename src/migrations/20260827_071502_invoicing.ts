@@ -37,7 +37,9 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   );
   `)
   await db.run(sql`CREATE INDEX \`invoices_items_order_idx\` ON \`invoices_items\` (\`_order\`);`)
-  await db.run(sql`CREATE INDEX \`invoices_items_parent_id_idx\` ON \`invoices_items\` (\`_parent_id\`);`)
+  await db.run(
+    sql`CREATE INDEX \`invoices_items_parent_id_idx\` ON \`invoices_items\` (\`_parent_id\`);`,
+  )
   await db.run(sql`CREATE TABLE \`invoices\` (
   	\`id\` integer PRIMARY KEY NOT NULL,
   	\`client_id\` integer NOT NULL,
@@ -91,7 +93,9 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.run(sql`CREATE INDEX \`invoices_client_idx\` ON \`invoices\` (\`client_id\`);`)
   await db.run(sql`CREATE INDEX \`invoices_issue_date_idx\` ON \`invoices\` (\`issue_date\`);`)
   await db.run(sql`CREATE INDEX \`invoices_status_idx\` ON \`invoices\` (\`status\`);`)
-  await db.run(sql`CREATE UNIQUE INDEX \`invoices_invoice_number_idx\` ON \`invoices\` (\`invoice_number\`);`)
+  await db.run(
+    sql`CREATE UNIQUE INDEX \`invoices_invoice_number_idx\` ON \`invoices\` (\`invoice_number\`);`,
+  )
   await db.run(sql`CREATE UNIQUE INDEX \`invoices_uuid_idx\` ON \`invoices\` (\`uuid\`);`)
   await db.run(sql`CREATE INDEX \`invoices_updated_at_idx\` ON \`invoices\` (\`updated_at\`);`)
   await db.run(sql`CREATE INDEX \`invoices_created_at_idx\` ON \`invoices\` (\`created_at\`);`)
@@ -108,8 +112,12 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	FOREIGN KEY (\`_parent_id\`) REFERENCES \`_invoices_v\`(\`id\`) ON UPDATE no action ON DELETE cascade
   );
   `)
-  await db.run(sql`CREATE INDEX \`_invoices_v_version_items_order_idx\` ON \`_invoices_v_version_items\` (\`_order\`);`)
-  await db.run(sql`CREATE INDEX \`_invoices_v_version_items_parent_id_idx\` ON \`_invoices_v_version_items\` (\`_parent_id\`);`)
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_version_items_order_idx\` ON \`_invoices_v_version_items\` (\`_order\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_version_items_parent_id_idx\` ON \`_invoices_v_version_items\` (\`_parent_id\`);`,
+  )
   await db.run(sql`CREATE TABLE \`_invoices_v\` (
   	\`id\` integer PRIMARY KEY NOT NULL,
   	\`parent_id\` integer,
@@ -165,15 +173,33 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   );
   `)
   await db.run(sql`CREATE INDEX \`_invoices_v_parent_idx\` ON \`_invoices_v\` (\`parent_id\`);`)
-  await db.run(sql`CREATE INDEX \`_invoices_v_version_version_client_idx\` ON \`_invoices_v\` (\`version_client_id\`);`)
-  await db.run(sql`CREATE INDEX \`_invoices_v_version_version_issue_date_idx\` ON \`_invoices_v\` (\`version_issue_date\`);`)
-  await db.run(sql`CREATE INDEX \`_invoices_v_version_version_status_idx\` ON \`_invoices_v\` (\`version_status\`);`)
-  await db.run(sql`CREATE INDEX \`_invoices_v_version_version_invoice_number_idx\` ON \`_invoices_v\` (\`version_invoice_number\`);`)
-  await db.run(sql`CREATE INDEX \`_invoices_v_version_version_uuid_idx\` ON \`_invoices_v\` (\`version_uuid\`);`)
-  await db.run(sql`CREATE INDEX \`_invoices_v_version_version_updated_at_idx\` ON \`_invoices_v\` (\`version_updated_at\`);`)
-  await db.run(sql`CREATE INDEX \`_invoices_v_version_version_created_at_idx\` ON \`_invoices_v\` (\`version_created_at\`);`)
-  await db.run(sql`CREATE INDEX \`_invoices_v_created_at_idx\` ON \`_invoices_v\` (\`created_at\`);`)
-  await db.run(sql`CREATE INDEX \`_invoices_v_updated_at_idx\` ON \`_invoices_v\` (\`updated_at\`);`)
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_version_version_client_idx\` ON \`_invoices_v\` (\`version_client_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_version_version_issue_date_idx\` ON \`_invoices_v\` (\`version_issue_date\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_version_version_status_idx\` ON \`_invoices_v\` (\`version_status\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_version_version_invoice_number_idx\` ON \`_invoices_v\` (\`version_invoice_number\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_version_version_uuid_idx\` ON \`_invoices_v\` (\`version_uuid\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_version_version_updated_at_idx\` ON \`_invoices_v\` (\`version_updated_at\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_version_version_created_at_idx\` ON \`_invoices_v\` (\`version_created_at\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_created_at_idx\` ON \`_invoices_v\` (\`created_at\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`_invoices_v_updated_at_idx\` ON \`_invoices_v\` (\`updated_at\`);`,
+  )
   await db.run(sql`CREATE TABLE \`invoice_settings\` (
   	\`id\` integer PRIMARY KEY NOT NULL,
   	\`seller_legal_name\` text NOT NULL,
@@ -204,12 +230,24 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	FOREIGN KEY (\`signature_id\`) REFERENCES \`media\`(\`id\`) ON UPDATE no action ON DELETE set null
   );
   `)
-  await db.run(sql`CREATE INDEX \`invoice_settings_logo_idx\` ON \`invoice_settings\` (\`logo_id\`);`)
-  await db.run(sql`CREATE INDEX \`invoice_settings_signature_idx\` ON \`invoice_settings\` (\`signature_id\`);`)
-  await db.run(sql`ALTER TABLE \`payload_locked_documents_rels\` ADD \`clients_id\` integer REFERENCES clients(id);`)
-  await db.run(sql`ALTER TABLE \`payload_locked_documents_rels\` ADD \`invoices_id\` integer REFERENCES invoices(id);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_clients_id_idx\` ON \`payload_locked_documents_rels\` (\`clients_id\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_invoices_id_idx\` ON \`payload_locked_documents_rels\` (\`invoices_id\`);`)
+  await db.run(
+    sql`CREATE INDEX \`invoice_settings_logo_idx\` ON \`invoice_settings\` (\`logo_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`invoice_settings_signature_idx\` ON \`invoice_settings\` (\`signature_id\`);`,
+  )
+  await db.run(
+    sql`ALTER TABLE \`payload_locked_documents_rels\` ADD \`clients_id\` integer REFERENCES clients(id);`,
+  )
+  await db.run(
+    sql`ALTER TABLE \`payload_locked_documents_rels\` ADD \`invoices_id\` integer REFERENCES invoices(id);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_clients_id_idx\` ON \`payload_locked_documents_rels\` (\`clients_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_invoices_id_idx\` ON \`payload_locked_documents_rels\` (\`invoices_id\`);`,
+  )
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -244,19 +282,45 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   	FOREIGN KEY (\`pages_id\`) REFERENCES \`pages\`(\`id\`) ON UPDATE no action ON DELETE cascade
   );
   `)
-  await db.run(sql`INSERT INTO \`__new_payload_locked_documents_rels\`("id", "order", "parent_id", "path", "albums_id", "artworks_id", "tags_id", "media_id", "contact_submissions_id", "users_id", "testimonials_id", "pages_id") SELECT "id", "order", "parent_id", "path", "albums_id", "artworks_id", "tags_id", "media_id", "contact_submissions_id", "users_id", "testimonials_id", "pages_id" FROM \`payload_locked_documents_rels\`;`)
+  await db.run(
+    sql`INSERT INTO \`__new_payload_locked_documents_rels\`("id", "order", "parent_id", "path", "albums_id", "artworks_id", "tags_id", "media_id", "contact_submissions_id", "users_id", "testimonials_id", "pages_id") SELECT "id", "order", "parent_id", "path", "albums_id", "artworks_id", "tags_id", "media_id", "contact_submissions_id", "users_id", "testimonials_id", "pages_id" FROM \`payload_locked_documents_rels\`;`,
+  )
   await db.run(sql`DROP TABLE \`payload_locked_documents_rels\`;`)
-  await db.run(sql`ALTER TABLE \`__new_payload_locked_documents_rels\` RENAME TO \`payload_locked_documents_rels\`;`)
+  await db.run(
+    sql`ALTER TABLE \`__new_payload_locked_documents_rels\` RENAME TO \`payload_locked_documents_rels\`;`,
+  )
   await db.run(sql`PRAGMA foreign_keys=ON;`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_order_idx\` ON \`payload_locked_documents_rels\` (\`order\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_parent_idx\` ON \`payload_locked_documents_rels\` (\`parent_id\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_path_idx\` ON \`payload_locked_documents_rels\` (\`path\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_albums_id_idx\` ON \`payload_locked_documents_rels\` (\`albums_id\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_artworks_id_idx\` ON \`payload_locked_documents_rels\` (\`artworks_id\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_tags_id_idx\` ON \`payload_locked_documents_rels\` (\`tags_id\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_media_id_idx\` ON \`payload_locked_documents_rels\` (\`media_id\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_contact_submissions_id_idx\` ON \`payload_locked_documents_rels\` (\`contact_submissions_id\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_users_id_idx\` ON \`payload_locked_documents_rels\` (\`users_id\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_testimonials_id_idx\` ON \`payload_locked_documents_rels\` (\`testimonials_id\`);`)
-  await db.run(sql`CREATE INDEX \`payload_locked_documents_rels_pages_id_idx\` ON \`payload_locked_documents_rels\` (\`pages_id\`);`)
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_order_idx\` ON \`payload_locked_documents_rels\` (\`order\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_parent_idx\` ON \`payload_locked_documents_rels\` (\`parent_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_path_idx\` ON \`payload_locked_documents_rels\` (\`path\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_albums_id_idx\` ON \`payload_locked_documents_rels\` (\`albums_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_artworks_id_idx\` ON \`payload_locked_documents_rels\` (\`artworks_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_tags_id_idx\` ON \`payload_locked_documents_rels\` (\`tags_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_media_id_idx\` ON \`payload_locked_documents_rels\` (\`media_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_contact_submissions_id_idx\` ON \`payload_locked_documents_rels\` (\`contact_submissions_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_users_id_idx\` ON \`payload_locked_documents_rels\` (\`users_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_testimonials_id_idx\` ON \`payload_locked_documents_rels\` (\`testimonials_id\`);`,
+  )
+  await db.run(
+    sql`CREATE INDEX \`payload_locked_documents_rels_pages_id_idx\` ON \`payload_locked_documents_rels\` (\`pages_id\`);`,
+  )
 }

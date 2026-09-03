@@ -34,8 +34,7 @@ export const generateMetadata = async (): Promise<Metadata> =>
     title: GALLERY_TITLE,
   })
 
-const countLabel = (count: number): string =>
-  count === 1 ? '1 piece' : `${count} pieces`
+const countLabel = (count: number): string => (count === 1 ? '1 piece' : `${count} pieces`)
 
 const GalleryIndexPage = async () => {
   const albums = await getGalleryAlbums()

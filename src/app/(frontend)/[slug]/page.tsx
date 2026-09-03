@@ -43,9 +43,7 @@ export const generateMetadata = async ({ params }: Props): Promise<Metadata> => 
   const { slug } = await params
   const [page, settings] = await Promise.all([getPage(slug), getSiteSettings()])
 
-  return page
-    ? pageMetadata({ path: `/${page.slug}`, settings, title: page.title })
-    : {}
+  return page ? pageMetadata({ path: `/${page.slug}`, settings, title: page.title }) : {}
 }
 
 export default async function CopyPage({ params }: Props) {

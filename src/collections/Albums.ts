@@ -73,7 +73,8 @@ export const Albums: CollectionConfig = {
       type: 'join',
       admin: {
         defaultColumns: ['title', 'published'],
-        description: 'Artworks filed into this album. Drag the rows to set the order they appear in the gallery.',
+        description:
+          'Artworks filed into this album. Drag the rows to set the order they appear in the gallery.',
       },
       collection: 'artworks',
       // Ordering lives here rather than on the collection: an artwork's position

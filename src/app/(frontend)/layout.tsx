@@ -45,8 +45,7 @@ export const dynamic = 'force-dynamic'
  * the two shallowly, so each of them re-emits the whole card rather than
  * patching this one — see `@/lib/seo/metadata`.
  */
-export const generateMetadata = async (): Promise<Metadata> =>
-  siteMetadata(await getSiteSettings())
+export const generateMetadata = async (): Promise<Metadata> => siteMetadata(await getSiteSettings())
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const payload = await getPayload({ config })

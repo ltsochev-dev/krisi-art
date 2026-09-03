@@ -21,6 +21,7 @@ import { getPayload } from 'payload'
 
 import type { Album, ContactPage, Homepage, Page, SiteSetting, Testimonial } from '@/payload-types'
 import type { PublicInvoice } from '@/lib/content/invoices'
+import type { SitemapContent } from '@/lib/content/sitemap'
 import type {
   GalleryAlbumSummary,
   GalleryArtwork,
@@ -38,6 +39,7 @@ import {
   toGalleryImage,
 } from '@/lib/content/gallery'
 import { findInvoiceByUuid } from '@/lib/content/invoices'
+import { findSitemapContent } from '@/lib/content/sitemap'
 import config from '@/payload.config'
 
 export type {
@@ -46,6 +48,7 @@ export type {
   GalleryImage,
   GalleryPage,
 } from '@/lib/content/gallery'
+export type { SitemapContent, SitemapEntry } from '@/lib/content/sitemap'
 
 const payloadInstance = async () => await getPayload({ config: await config })
 
@@ -367,4 +370,21 @@ export const getInvoiceByUuid = unstable_cache(
   },
   ['invoice'],
   { tags: [CACHE_TAGS.invoices, CACHE_TAGS.media] },
+)
+
+// --- Sitemap ---------------------------------------------------------------
+
+/**
+ * Every published album and copy page, as slug plus a last-modified timestamp.
+ * See `@/lib/content/sitemap` for what the timestamps actually mean.
+ *
+ * Tagged with `artworks` as well as the two collections it reads, because an
+ * album's entry carries the timestamp of the newest artwork in it — so
+ * publishing an artwork has to drop this entry even though no album row moved.
+ */
+export const getSitemapContent = unstable_cache(
+  async (): Promise<SitemapContent> =>
+    await findSitemapContent({ payload: await payloadInstance() }),
+  ['sitemap'],
+  { tags: [CACHE_TAGS.albums, CACHE_TAGS.artworks, CACHE_TAGS.pages] },
 )
