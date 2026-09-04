@@ -13,9 +13,10 @@
  * trip, not the check itself. Rate limiting and the honeypot verdict come back
  * as a form-level error, which is why that banner is not tied to a field.
  */
-import React, { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
 
 import { CircleAlert, CircleCheck, LoaderCircle, Send } from 'lucide-react'
+import posthog from 'posthog-js'
 
 import { contactFormInitialState } from '@/lib/actions/contact-state'
 import { submitContactForm } from '@/lib/actions/contact'
@@ -34,6 +35,17 @@ interface Props {
 
 export const ContactForm = ({ formIntro }: Props) => {
   const [state, formAction, pending] = useActionState(submitContactForm, contactFormInitialState)
+
+  useEffect(() => {
+    if (state.status === 'success') {
+      posthog.capture('contact_form_submitted')
+    } else if (state.status === 'error') {
+      const hasFieldErrors = state.errors && Object.keys(state.errors).length > 0
+      posthog.capture('contact_form_error', {
+        error_type: hasFieldErrors ? 'validation' : 'rate_limit_or_server',
+      })
+    }
+  }, [state.status, state.errors])
 
   if (state.status === 'success') {
     return (

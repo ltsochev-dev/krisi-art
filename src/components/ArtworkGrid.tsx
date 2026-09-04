@@ -11,6 +11,7 @@
 import { useState } from 'react'
 
 import { AnimatePresence, motion } from 'motion/react'
+import posthog from 'posthog-js'
 
 import type { GalleryArtwork } from '@/lib/content/queries'
 
@@ -39,7 +40,16 @@ const ArtworkGrid = ({ artworks, emptyMessage = 'Nothing here yet.' }: Props) =>
               key={artwork.id}
               artwork={artwork}
               index={index}
-              onOpen={() => setOpenIndex(index)}
+              onOpen={() => {
+                posthog.capture('artwork_viewed', {
+                  artwork_id: artwork.id,
+                  artwork_title: artwork.title,
+                  album_title: artwork.album.title,
+                  medium: artwork.medium,
+                  year: artwork.year,
+                })
+                setOpenIndex(index)
+              }}
             />
           ))}
         </AnimatePresence>

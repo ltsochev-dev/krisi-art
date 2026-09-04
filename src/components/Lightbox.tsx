@@ -17,6 +17,7 @@ import { useCallback, useEffect } from 'react'
 
 import { AnimatePresence, motion } from 'motion/react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import posthog from 'posthog-js'
 
 import type { GalleryArtwork } from '@/lib/content/queries'
 
@@ -40,9 +41,17 @@ const Lightbox = ({ artworks, index, onClose, onIndexChange }: Props) => {
         return
       }
 
-      onIndexChange((index + delta + artworks.length) % artworks.length)
+      const nextIndex = (index + delta + artworks.length) % artworks.length
+      const nextArtwork = artworks[nextIndex]
+      posthog.capture('artwork_lightbox_navigated', {
+        direction: delta > 0 ? 'next' : 'prev',
+        artwork_id: nextArtwork.id,
+        artwork_title: nextArtwork.title,
+        album_title: nextArtwork.album.title,
+      })
+      onIndexChange(nextIndex)
     },
-    [artworks.length, index, onIndexChange],
+    [artworks, index, onIndexChange],
   )
 
   useEffect(() => {

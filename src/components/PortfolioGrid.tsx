@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import Link from 'next/link'
+import posthog from 'posthog-js'
 import ArtworkGrid from './ArtworkGrid'
 import type { FeaturedAlbum, GalleryArtwork } from '@/lib/content/queries'
 
@@ -66,7 +67,13 @@ const PortfolioGrid = ({ title, subtitle, albums, artworks }: Props) => {
           {Object.entries(categories).map(([slug, category]) => (
             <button
               key={slug}
-              onClick={() => setActiveAlbum(slug)}
+              onClick={() => {
+                posthog.capture('portfolio_album_filtered', {
+                  album_slug: slug,
+                  album_title: category,
+                })
+                setActiveAlbum(slug)
+              }}
               className={`rounded-full px-5 py-2 font-sans text-sm tracking-wider uppercase transition-all duration-300 ${
                 activeAlbum === slug
                   ? 'bg-primary text-primary-foreground'
