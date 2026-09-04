@@ -9,6 +9,7 @@ import type { getTestimonials } from '@/lib/content/queries'
 
 import TestimonialModal from '@/components/TestimonialModal'
 import { isClipped, toParagraphs } from '@/lib/content/testimonials'
+import { snapStops } from '@/lib/ui/carousel'
 
 type TestimonialList = Awaited<ReturnType<typeof getTestimonials>>
 
@@ -29,10 +30,24 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
   const [active, setActive] = useState(0)
   // Index of the testimonial shown in the modal; null is closed.
   const [expanded, setExpanded] = useState<null | number>(null)
-  // Number of reachable snap positions. Smaller than the card count once the
-  // last few cards share the final scroll position, and 0 while everything
-  // still fits on screen — which is what hides the controls entirely.
-  const [stops, setStops] = useState(0)
+
+  /**
+   * The `scrollLeft` values the arrows and dots can actually reach, ascending.
+   *
+   * A list of positions rather than a count of cards, because the two are not
+   * the same thing: the last card's own start position sits past the end of the
+   * scroll range, so the final stop is the end of the track and shows the whole
+   * tail of the list at once. Deriving `active` and the disabled state from this
+   * one list is what keeps them in step — measuring stops in cards while
+   * tracking `active` in cards-nearest-to-scrollLeft is what previously stranded
+   * the last testimonial one click out of reach.
+   *
+   * A ref, not state: `paint` reads it on every scroll frame.
+   */
+  const stops = useRef<number[]>([])
+  // Mirrors `stops.current.length` for rendering. 0 while everything still fits
+  // on screen, which is what hides the controls entirely.
+  const [stopCount, setStopCount] = useState(0)
 
   /**
    * Scroll-linked card motion. Cards ease down in scale and opacity the further
@@ -46,24 +61,22 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
     const track = trackRef.current
     if (!track) return
 
-    const first = cardRefs.current[0]
-    const origin = first ? first.offsetLeft : 0
     const centre = track.scrollLeft + track.clientWidth / 2
     const reduced = prefersReducedMotion()
 
     let nearest = 0
     let nearestGap = Infinity
 
-    cardRefs.current.forEach((card, index) => {
-      if (!card) return
-
-      const gap = Math.abs(card.offsetLeft - origin - track.scrollLeft)
+    stops.current.forEach((position, index) => {
+      const gap = Math.abs(position - track.scrollLeft)
       if (gap < nearestGap) {
         nearestGap = gap
         nearest = index
       }
+    })
 
-      if (reduced) return
+    cardRefs.current.forEach((card) => {
+      if (!card || reduced) return
 
       // 0 at dead centre, 1 once a card is a full viewport away.
       const distance = Math.min(
@@ -85,23 +98,19 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
     })
   }, [paint])
 
-  /** Measure how many snap positions the track can actually reach. */
+  /** Rebuild the reachable scroll positions. */
   const measure = useCallback(() => {
     const track = trackRef.current
     const first = cardRefs.current[0]
     if (!track || !first) return
 
-    const maxScroll = track.scrollWidth - track.clientWidth
-    if (maxScroll < 1) {
-      setStops(0)
-      return
-    }
+    const positions = snapStops(
+      cardRefs.current.flatMap((card) => (card ? [card.offsetLeft - first.offsetLeft] : [])),
+      track.scrollWidth - track.clientWidth,
+    )
 
-    const reachable = cardRefs.current.filter(
-      (card) => card && card.offsetLeft - first.offsetLeft <= maxScroll + 1,
-    ).length
-
-    setStops(reachable)
+    stops.current = positions
+    setStopCount(positions.length)
   }, [])
 
   useEffect(() => {
@@ -126,26 +135,25 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
     }
   }, [measure, paint, testimonials])
 
-  const scrollToCard = useCallback((index: number) => {
+  const scrollToStop = useCallback((index: number) => {
     const track = trackRef.current
-    const first = cardRefs.current[0]
-    const target = cardRefs.current[index]
-    if (!track || !first || !target) return
+    const position = stops.current[index]
+    if (!track || position === undefined) return
 
     track.scrollTo({
-      left: target.offsetLeft - first.offsetLeft,
+      left: position,
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
     })
   }, [])
 
   const step = useCallback(
     (direction: -1 | 1) => {
-      scrollToCard(Math.max(0, Math.min(active + direction, testimonials.length - 1)))
+      scrollToStop(Math.max(0, Math.min(active + direction, stops.current.length - 1)))
     },
-    [active, scrollToCard, testimonials.length],
+    [active, scrollToStop],
   )
 
-  const hasControls = stops > 1
+  const hasControls = stopCount > 1
 
   return (
     <section id="testimonials" className="bg-background py-16 md:py-24">
@@ -204,7 +212,14 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
                     transform: 'scale(var(--card-scale, 1))',
                     opacity: 'var(--card-fade, 1)',
                   }}
-                  className="w-[82%] shrink-0 snap-start will-change-transform sm:w-[48%] lg:w-[31%]"
+                  // The last card aligns to the end of the track rather than
+                  // the start: under `snap-mandatory` its start position sits
+                  // past `maxScroll`, so an end alignment is what makes the
+                  // final stop a real snap point instead of one the browser has
+                  // to clamp.
+                  className={`w-[82%] shrink-0 will-change-transform sm:w-[48%] lg:w-[31%] ${
+                    index === testimonials.length - 1 ? 'snap-end' : 'snap-start'
+                  }`}
                 >
                   <div className="relative flex h-full flex-col rounded-2xl border border-border bg-card p-8 transition-colors duration-300 focus-within:border-primary hover:border-primary">
                     {/* The whole body is rendered whether or not it is clipped —
@@ -280,12 +295,15 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
               </button>
 
               <div className="flex items-center gap-2">
-                {Array.from({ length: stops }, (_, index) => (
+                {Array.from({ length: stopCount }, (_, index) => (
                   <button
                     key={index}
                     type="button"
-                    onClick={() => scrollToCard(index)}
-                    aria-label={`Go to testimonial ${index + 1}`}
+                    onClick={() => scrollToStop(index)}
+                    // "Position" rather than "testimonial": the stops stop
+                    // matching the cards one-for-one as soon as the tail of the
+                    // list collapses into the final one.
+                    aria-label={`Go to position ${index + 1} of ${stopCount}`}
                     aria-current={index === active}
                     className={`h-1.5 rounded-full transition-all duration-300 ${
                       index === active ? 'w-6 bg-primary' : 'w-1.5 bg-border hover:bg-primary/50'
@@ -297,7 +315,7 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
               <button
                 type="button"
                 onClick={() => step(1)}
-                disabled={active >= stops - 1}
+                disabled={active >= stopCount - 1}
                 aria-label="Next testimonial"
                 className="rounded-full border border-border p-2 text-foreground transition-colors duration-300 hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-30"
               >
