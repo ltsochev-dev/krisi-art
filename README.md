@@ -312,6 +312,17 @@ Variables (same page, **Variables** tab) — all optional:
 | `DEPLOY_PORT`    | `22`                                                |
 | `DEPLOY_SERVICE` | `app`                                               |
 | `APP_URL`        | unset; recorded as the deployment's environment URL |
+| `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` | unset; browser PostHog token, passed to `docker build` as a build arg. A variable and not a secret on purpose — it ships to every visitor anyway |
+| `NEXT_PUBLIC_POSTHOG_HOST` | unset; PostHog ingestion origin, e.g. `https://eu.i.posthog.com` |
+
+Both `NEXT_PUBLIC_*` entries are **build-time only**. `next build` replaces every
+`process.env.NEXT_PUBLIC_*` read with a literal in the JS it emits, so the
+browser bundle is fixed the moment the image is built and the VPS `.env` cannot
+influence it. Leave either one unset and PostHog initialises with `undefined`,
+which `instrumentation-client.ts` treats as "not configured" — in production it
+skips silently, with no log line. The trade-off is that an image built with one
+project's token belongs to that environment only and cannot be promoted to
+another.
 
 No registry credentials live on the VPS. The deploy step pipes the workflow
 run's own `GITHUB_TOKEN` over SSH, logs into ghcr.io with it and logs out again

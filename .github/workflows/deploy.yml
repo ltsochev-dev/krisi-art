@@ -19,6 +19,15 @@
 #   DEPLOY_PORT             SSH port. Default: 22
 #   DEPLOY_SERVICE          Compose service name. Default: app
 #   APP_URL                 Public origin, recorded on the GitHub deployment.
+#   NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
+#                           Browser PostHog token. Inlined into the JS bundle at
+#                           build time, so it belongs on the build and not only
+#                           in the VPS `.env`. A variable rather than a secret
+#                           on purpose: it ships to every visitor regardless,
+#                           and masking it in the logs buys nothing.
+#   NEXT_PUBLIC_POSTHOG_HOST
+#                           PostHog ingestion origin, e.g.
+#                           https://eu.i.posthog.com. Build-time, as above.
 #
 # The VPS pulls from ghcr.io with this run's GITHUB_TOKEN, so no registry
 # credentials are stored on the box. See README "Continuous deployment" for the
@@ -124,6 +133,12 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Inlined into the client bundle by `next build` (see the Dockerfile's
+          # builder stage). Absent here means PostHog is silently dead in the
+          # deployed image, so set both before relying on analytics.
+          build-args: |
+            NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=${{ vars.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN }}
+            NEXT_PUBLIC_POSTHOG_HOST=${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
 
   deploy:
     name: Deploy to VPS

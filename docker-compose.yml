@@ -11,7 +11,15 @@
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      # `next build` inlines these into the browser bundle, so they are needed
+      # at build time, not run time — `env_file` below is too late for them.
+      # Compose interpolates from the project-directory `.env`, the same file
+      # the container reads. Unset means PostHog silently no-ops in the image.
+      args:
+        NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: ${NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-}
     restart: unless-stopped
     ports:
       - '3000:3000'

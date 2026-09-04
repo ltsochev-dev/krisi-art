@@ -30,6 +30,18 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED 1
 
+# `next build` inlines every `process.env.NEXT_PUBLIC_*` read into the bundle it
+# emits, so these have to be present HERE — the runtime `.env` on the VPS is far
+# too late, and an unset one silently bakes in `undefined`. That makes the image
+# environment-specific: a tag built with a staging token cannot be promoted to
+# production. The values are served to browsers verbatim, so nothing secret
+# belongs in them. Declared after `COPY . .` so changing one only invalidates
+# the build layer, not the dependency install.
+ARG NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
+ARG NEXT_PUBLIC_POSTHOG_HOST
+ENV NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=$NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
+ENV NEXT_PUBLIC_POSTHOG_HOST=$NEXT_PUBLIC_POSTHOG_HOST
+
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
   elif [ -f package-lock.json ]; then npm run build; \
