@@ -65,7 +65,7 @@ const GalleryIndexPage = async () => {
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={album.cover.sizes.card ?? album.cover.url ?? ''}
-                      alt={album.cover.alt}
+                      alt={album.cover.alt ?? album.title}
                       className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                       loading="lazy"
                     />

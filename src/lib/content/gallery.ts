@@ -28,7 +28,12 @@ export const ARTWORK_ORDER_FIELD = '_artworks_artworks_order'
 
 /** The lean image shape the frontend renders. Mirrors the sizes in `Media.ts`. */
 export type GalleryImage = {
-  alt: string
+  /**
+   * `null` when the upload has no alt of its own — optional on `Media`, so a
+   * bulk upload is not blocked on it. Callers substitute the title they have
+   * rather than rendering an empty `alt`.
+   */
+  alt: null | string
   caption: null | string
   height: null | number
   id: number
@@ -93,7 +98,7 @@ export const toGalleryImage = (media: Media | null | number | undefined): Galler
   }
 
   return {
-    alt: media.alt,
+    alt: media.alt ?? null,
     caption: media.caption ?? null,
     height: media.height ?? null,
     id: media.id,

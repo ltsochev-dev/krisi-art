@@ -37,7 +37,7 @@ const TITLE_SEPARATOR = ' — '
  */
 const DESCRIPTION_MAX = 200
 
-type OgImage = { alt: string; height?: number; url: string; width?: number }
+type OgImage = { alt?: string; height?: number; url: string; width?: number }
 
 /**
  * Public origin, or `undefined` when it is not configured.
@@ -136,7 +136,9 @@ const toOgImage = (
   const isOriginal = !derivative && source === image.url
 
   return {
-    alt: image.alt,
+    // Omitted rather than sent empty when the upload has no alt of its own —
+    // `og:image:alt` is optional, and a blank one is worse than none.
+    ...(image.alt ? { alt: image.alt } : {}),
     ...(isOriginal && image.height && image.width
       ? { height: image.height, width: image.width }
       : {}),

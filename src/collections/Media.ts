@@ -50,7 +50,12 @@ export const Media: CollectionConfig = {
   admin: {
     defaultColumns: ['filename', 'alt', 'enabled', 'mimeType', 'filesize', 'updatedAt'],
     group: 'Content',
-    useAsTitle: 'alt',
+    /**
+     * `filename`, not `alt`: alt is optional (see the field below), and a media
+     * doc with none would otherwise show up untitled in relationship pickers and
+     * the upload drawer. A filename is always there.
+     */
+    useAsTitle: 'filename',
   },
   fields: [
     {
@@ -77,12 +82,21 @@ export const Media: CollectionConfig = {
       index: true,
     },
     {
+      /**
+       * Optional on purpose, so a bulk upload does not stop on every file.
+       *
+       * The frontend never renders a missing alt as an empty string by accident:
+       * `toGalleryImage` projects it as `null`, and each call site substitutes
+       * the caption it actually has — the artwork title on a card or in the
+       * lightbox, the album title on a gallery cover. Filling this in only pays
+       * off for images whose own description beats that fallback.
+       */
       name: 'alt',
       type: 'text',
       admin: {
-        description: 'Describe the image for screen readers and search engines.',
+        description:
+          'Optional. Describes the image for screen readers and search engines; left empty, the artwork or album title is used instead.',
       },
-      required: true,
     },
     {
       name: 'caption',

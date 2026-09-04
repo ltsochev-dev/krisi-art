@@ -65,6 +65,11 @@ const Row = ({ label, value }: { label: string; value: null | string }) =>
  * it for an image component whose call sites need an `alt` prop — the alt text
  * comes off the media document below, and there is nothing for a call site to
  * pass.
+ *
+ * Alt is optional on `Media`, and an upload without one falls back to `''`
+ * rather than to a made-up label: both images here — the logo and the signature
+ * — sit beside the seller's legal name in the markup, so an empty alt correctly
+ * marks them decorative instead of making a screen reader read the name twice.
  */
 const PrintImage = ({ className, image }: { className: string; image: InvoiceImage | null }) =>
   image ? (
@@ -72,7 +77,7 @@ const PrintImage = ({ className, image }: { className: string; image: InvoiceIma
     // srcset would have the browser pick a screen-sized candidate for paper.
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      alt={image.alt}
+      alt={image.alt ?? ''}
       className={className}
       height={image.height ?? undefined}
       src={image.url}

@@ -108,7 +108,7 @@ const About = ({ title, stats = [], images = [], children }: Props) => {
                               height is whatever the original's ratio produced.
                               `object-cover` reconciles the two. */}
                           <Image
-                            alt={tile.image.alt}
+                            alt={tile.image.alt ?? tile.caption ?? ''}
                             className="object-cover transition-transform duration-700 group-hover:scale-105"
                             fill
                             // 768w — roughly 2x the widest this slot ever gets,

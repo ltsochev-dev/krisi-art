@@ -59,97 +59,96 @@ export type SupportedTimezones =
   | 'Pacific/Guam'
   | 'Pacific/Noumea'
   | 'Pacific/Auckland'
-  | 'Pacific/Fiji'
+  | 'Pacific/Fiji';
 
 export interface Config {
   auth: {
-    users: UserAuthOperations
-  }
-  blocks: {}
+    users: UserAuthOperations;
+  };
+  blocks: {};
   collections: {
-    albums: Album
-    artworks: Artwork
-    tags: Tag
-    media: Media
-    'contact-submissions': ContactSubmission
-    users: User
-    testimonials: Testimonial
-    pages: Page
-    clients: Client
-    invoices: Invoice
-    'payload-kv': PayloadKv
-    'payload-locked-documents': PayloadLockedDocument
-    'payload-preferences': PayloadPreference
-    'payload-migrations': PayloadMigration
-  }
+    albums: Album;
+    artworks: Artwork;
+    tags: Tag;
+    media: Media;
+    'contact-submissions': ContactSubmission;
+    users: User;
+    testimonials: Testimonial;
+    pages: Page;
+    clients: Client;
+    invoices: Invoice;
+    'payload-kv': PayloadKv;
+    'payload-locked-documents': PayloadLockedDocument;
+    'payload-preferences': PayloadPreference;
+    'payload-migrations': PayloadMigration;
+  };
   collectionsJoins: {
     albums: {
-      artworks: 'artworks'
-    }
+      artworks: 'artworks';
+    };
     clients: {
-      invoices: 'invoices'
-    }
-  }
+      invoices: 'invoices';
+    };
+  };
   collectionsSelect: {
-    albums: AlbumsSelect<false> | AlbumsSelect<true>
-    artworks: ArtworksSelect<false> | ArtworksSelect<true>
-    tags: TagsSelect<false> | TagsSelect<true>
-    media: MediaSelect<false> | MediaSelect<true>
-    'contact-submissions': ContactSubmissionsSelect<false> | ContactSubmissionsSelect<true>
-    users: UsersSelect<false> | UsersSelect<true>
-    testimonials: TestimonialsSelect<false> | TestimonialsSelect<true>
-    pages: PagesSelect<false> | PagesSelect<true>
-    clients: ClientsSelect<false> | ClientsSelect<true>
-    invoices: InvoicesSelect<false> | InvoicesSelect<true>
-    'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>
-    'payload-locked-documents':
-      PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>
-    'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>
-    'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>
-  }
+    albums: AlbumsSelect<false> | AlbumsSelect<true>;
+    artworks: ArtworksSelect<false> | ArtworksSelect<true>;
+    tags: TagsSelect<false> | TagsSelect<true>;
+    media: MediaSelect<false> | MediaSelect<true>;
+    'contact-submissions': ContactSubmissionsSelect<false> | ContactSubmissionsSelect<true>;
+    users: UsersSelect<false> | UsersSelect<true>;
+    testimonials: TestimonialsSelect<false> | TestimonialsSelect<true>;
+    pages: PagesSelect<false> | PagesSelect<true>;
+    clients: ClientsSelect<false> | ClientsSelect<true>;
+    invoices: InvoicesSelect<false> | InvoicesSelect<true>;
+    'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
+    'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
+    'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
+    'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
+  };
   db: {
-    defaultIDType: number
-  }
-  fallbackLocale: null
+    defaultIDType: number;
+  };
+  fallbackLocale: null;
   globals: {
-    homepage: Homepage
-    'contact-page': ContactPage
-    'site-settings': SiteSetting
-    'invoice-settings': InvoiceSetting
-  }
+    homepage: Homepage;
+    'contact-page': ContactPage;
+    'site-settings': SiteSetting;
+    'invoice-settings': InvoiceSetting;
+  };
   globalsSelect: {
-    homepage: HomepageSelect<false> | HomepageSelect<true>
-    'contact-page': ContactPageSelect<false> | ContactPageSelect<true>
-    'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>
-    'invoice-settings': InvoiceSettingsSelect<false> | InvoiceSettingsSelect<true>
-  }
-  locale: null
+    homepage: HomepageSelect<false> | HomepageSelect<true>;
+    'contact-page': ContactPageSelect<false> | ContactPageSelect<true>;
+    'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+    'invoice-settings': InvoiceSettingsSelect<false> | InvoiceSettingsSelect<true>;
+  };
+  locale: null;
   widgets: {
-    collections: CollectionsWidget
-  }
-  user: User
+    collections: CollectionsWidget;
+  };
+  user: User;
   jobs: {
-    tasks: unknown
-    workflows: unknown
-  }
+    tasks: unknown;
+    workflows: unknown;
+  };
 }
 export interface UserAuthOperations {
   forgotPassword: {
-    email: string
-    password: string
-  }
+    email: string;
+    password: string;
+  };
   login: {
-    email: string
-    password: string
-  }
+    email: string;
+    password: string;
+  };
   registerFirstUser: {
-    email: string
-    password: string
-  }
+    email: string;
+    password: string;
+  };
   unlock: {
-    email: string
-    password: string
-  }
+    email: string;
+    password: string;
+  };
 }
 /**
  * Groups of artworks. Albums become the filter chips on the homepage gallery; drag the rows to reorder the chips.
@@ -158,33 +157,33 @@ export interface UserAuthOperations {
  * via the `definition` "albums".
  */
 export interface Album {
-  id: number
-  _order?: string | null
-  title: string
+  id: number;
+  _order?: string | null;
+  title: string;
   /**
    * When enabled, the slug will auto-generate from the title field on save and autosave.
    */
-  generateSlug?: boolean | null
-  slug: string
-  description?: string | null
+  generateSlug?: boolean | null;
+  slug: string;
+  description?: string | null;
   /**
    * Unpublished albums are invisible to the public API.
    */
-  published?: boolean | null
+  published?: boolean | null;
   /**
    * Marks the fallback album that artworks land in. Cannot be deleted.
    */
-  isDefault?: boolean | null
+  isDefault?: boolean | null;
   /**
    * Artworks filed into this album. Drag the rows to set the order they appear in the gallery.
    */
   artworks?: {
-    docs?: (number | Artwork)[]
-    hasNextPage?: boolean
-    totalDocs?: number
-  }
-  updatedAt: string
-  createdAt: string
+    docs?: (number | Artwork)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * One row per piece. The image itself lives in Media — an artwork wraps it with the album and caption metadata the gallery needs. Order is set per album, on the album itself.
@@ -193,92 +192,92 @@ export interface Album {
  * via the `definition` "artworks".
  */
 export interface Artwork {
-  id: number
-  _artworks_artworks_order?: string | null
-  title: string
-  image: number | Media
+  id: number;
+  _artworks_artworks_order?: string | null;
+  title: string;
+  image: number | Media;
   /**
    * Defaults to Uncategorized.
    */
-  album: number | Album
+  album: number | Album;
   /**
    * Unpublished artworks are invisible to the public API.
    */
-  published?: boolean | null
-  year?: number | null
-  medium?: string | null
-  dimensions?: string | null
+  published?: boolean | null;
+  year?: number | null;
+  medium?: string | null;
+  dimensions?: string | null;
   /**
    * Optional story behind the piece.
    */
-  description?: string | null
+  description?: string | null;
   /**
    * Cross-album labels, independent of which album the piece is filed under.
    */
-  tags?: (number | Tag)[] | null
-  updatedAt: string
-  createdAt: string
+  tags?: (number | Tag)[] | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
 export interface Media {
-  id: number
+  id: number;
   /**
    * Off until the image is ready. Disabled images are hidden everywhere on the site, and any artwork using one drops out of the gallery.
    */
-  enabled?: boolean | null
+  enabled?: boolean | null;
   /**
-   * Describe the image for screen readers and search engines.
+   * Optional. Describes the image for screen readers and search engines; left empty, the artwork or album title is used instead.
    */
-  alt: string
-  caption?: string | null
-  updatedAt: string
-  createdAt: string
-  url?: string | null
-  thumbnailURL?: string | null
-  filename?: string | null
-  mimeType?: string | null
-  filesize?: number | null
-  width?: number | null
-  height?: number | null
-  focalX?: number | null
-  focalY?: number | null
+  alt?: string | null;
+  caption?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
   sizes?: {
     thumbnail?: {
-      url?: string | null
-      width?: number | null
-      height?: number | null
-      mimeType?: string | null
-      filesize?: number | null
-      filename?: string | null
-    }
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
     card?: {
-      url?: string | null
-      width?: number | null
-      height?: number | null
-      mimeType?: string | null
-      filesize?: number | null
-      filename?: string | null
-    }
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
     tablet?: {
-      url?: string | null
-      width?: number | null
-      height?: number | null
-      mimeType?: string | null
-      filesize?: number | null
-      filename?: string | null
-    }
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
     hero?: {
-      url?: string | null
-      width?: number | null
-      height?: number | null
-      mimeType?: string | null
-      filesize?: number | null
-      filename?: string | null
-    }
-  }
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
 }
 /**
  * Cross-album labels for artworks, e.g. "oil", "portrait".
@@ -287,15 +286,15 @@ export interface Media {
  * via the `definition` "tags".
  */
 export interface Tag {
-  id: number
-  name: string
+  id: number;
+  name: string;
   /**
    * When enabled, the slug will auto-generate from the title field on save and autosave.
    */
-  generateSlug?: boolean | null
-  slug: string
-  updatedAt: string
-  createdAt: string
+  generateSlug?: boolean | null;
+  slug: string;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * Messages sent through the contact form. Read-only apart from the status.
@@ -304,66 +303,66 @@ export interface Tag {
  * via the `definition` "contact-submissions".
  */
 export interface ContactSubmission {
-  id: number
-  name: string
-  email: string
-  subject?: string | null
-  message: string
+  id: number;
+  name: string;
+  email: string;
+  subject?: string | null;
+  message: string;
   /**
    * The only field staff are meant to change.
    */
-  status: 'new' | 'read' | 'replied' | 'archived'
+  status: 'new' | 'read' | 'replied' | 'archived';
   /**
    * Whether the notification email left the building.
    */
-  emailSent?: boolean | null
-  emailError?: string | null
+  emailSent?: boolean | null;
+  emailError?: string | null;
   /**
    * Captured for spam triage only.
    */
-  userAgent?: string | null
-  updatedAt: string
-  createdAt: string
+  userAgent?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
-  id: number
+  id: number;
   /**
    * Synced from Cognito on sign-in; local edits are overwritten.
    */
-  name?: string | null
+  name?: string | null;
   /**
    * Immutable Cognito user identifier.
    */
-  cognitoSub?: string | null
+  cognitoSub?: string | null;
   /**
    * Derived from Cognito group membership on every sign-in. Change the group in Cognito, not here.
    */
-  roles?: ('admin' | 'editor')[] | null
-  updatedAt: string
-  createdAt: string
+  roles?: ('admin' | 'editor')[] | null;
+  updatedAt: string;
+  createdAt: string;
   /**
    * Synced from the Cognito email claim on every sign-in.
    */
-  email: string
-  resetPasswordToken?: string | null
-  resetPasswordExpiration?: string | null
-  salt?: string | null
-  hash?: string | null
-  loginAttempts?: number | null
-  lockUntil?: string | null
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
   sessions?:
     | {
-        id: string
-        createdAt?: string | null
-        expiresAt: string
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
       }[]
-    | null
-  password?: string | null
-  collection: 'users'
+    | null;
+  password?: string | null;
+  collection: 'users';
 }
 /**
  * Groups of testimonials. Testimonials are displayed on the homepage; drag the rows to reorder them.
@@ -372,13 +371,13 @@ export interface User {
  * via the `definition` "testimonials".
  */
 export interface Testimonial {
-  id: number
-  _order?: string | null
-  name: string
+  id: number;
+  _order?: string | null;
+  name: string;
   /**
    * Plain text.
    */
-  testimonial: string
+  testimonial: string;
   socials?:
     | {
         platform:
@@ -390,21 +389,21 @@ export interface Testimonial {
           | 'tiktok'
           | 'youtube'
           | 'artstation'
-          | 'other'
-        href?: string | null
-        id?: string | null
+          | 'other';
+        href?: string | null;
+        id?: string | null;
       }[]
-    | null
+    | null;
   /**
    * Not displayed. Used internally.
    */
-  rating?: number | null
+  rating?: number | null;
   /**
    * Unpublished testimonials are invisible to the public API.
    */
-  published?: boolean | null
-  updatedAt: string
-  createdAt: string
+  published?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * Standalone pages such as Terms and Privacy Policy, addressed by their slug.
@@ -413,37 +412,37 @@ export interface Testimonial {
  * via the `definition` "pages".
  */
 export interface Page {
-  id: number
-  title: string
+  id: number;
+  title: string;
   /**
    * When enabled, the slug will auto-generate from the title field on save and autosave.
    */
-  generateSlug?: boolean | null
-  slug: string
+  generateSlug?: boolean | null;
+  slug: string;
   /**
    * The body of the page. Formatting comes through to the frontend.
    */
   content?: {
     root: {
-      type: string
+      type: string;
       children: {
-        type: any
-        version: number
-        [k: string]: unknown
-      }[]
-      direction: ('ltr' | 'rtl') | null
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | ''
-      indent: number
-      version: number
-    }
-    [k: string]: unknown
-  } | null
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
   /**
    * Unpublished pages are invisible to the public API and 404 on the site.
    */
-  published?: boolean | null
-  updatedAt: string
-  createdAt: string
+  published?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * Companies and individuals that get invoiced. A client with invoices cannot be deleted — archive them instead.
@@ -452,57 +451,57 @@ export interface Page {
  * via the `definition` "clients".
  */
 export interface Client {
-  id: number
+  id: number;
   /**
    * A company invoice needs an ЕИК/БУЛСТАТ and a МОЛ; an individual needs neither.
    */
-  kind: 'company' | 'individual'
+  kind: 'company' | 'individual';
   /**
    * The full legal name, exactly as it should print on the invoice.
    */
-  name: string
+  name: string;
   /**
    * The company identifier from the Commercial Register.
    */
-  eik?: string | null
+  eik?: string | null;
   /**
    * Only if the client is VAT-registered. Include the country prefix (BG…).
    */
-  vatNumber?: string | null
+  vatNumber?: string | null;
   /**
    * Материално отговорно лице — the person who signs for the company.
    */
-  responsiblePerson?: string | null
+  responsiblePerson?: string | null;
   /**
    * Street and number. City, postcode and country go in the fields below.
    */
-  address: string
-  city: string
-  postalCode?: string | null
-  country: string
+  address: string;
+  city: string;
+  postalCode?: string | null;
+  country: string;
   /**
    * Where the invoice link gets sent.
    */
-  email?: string | null
-  phone?: string | null
+  email?: string | null;
+  phone?: string | null;
   /**
    * Internal. Never printed on an invoice.
    */
-  notes?: string | null
+  notes?: string | null;
   /**
    * Archived clients stay on their old invoices but disappear from the picker when creating a new one.
    */
-  archived?: boolean | null
+  archived?: boolean | null;
   /**
    * Every invoice issued to this client.
    */
   invoices?: {
-    docs?: (number | Invoice)[]
-    hasNextPage?: boolean
-    totalDocs?: number
-  }
-  updatedAt: string
-  createdAt: string
+    docs?: (number | Invoice)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * Drafts are freely editable and have no number. Issuing one assigns the next number in the sequence, freezes everything that prints on it, and records every later change in the Versions tab.
@@ -511,27 +510,27 @@ export interface Client {
  * via the `definition` "invoices".
  */
 export interface Invoice {
-  id: number
+  id: number;
   /**
    * Their details are copied onto this invoice when it is issued.
    */
-  client: number | Client
-  issueDate: string
+  client: number | Client;
+  issueDate: string;
   /**
    * Leave blank to use the payment terms from Invoicing → Settings.
    */
-  dueDate?: string | null
-  placeOfIssue?: string | null
-  paymentMethod?: ('bank' | 'card' | 'cash' | 'other') | null
-  currency: 'EUR' | 'BGN' | 'USD' | 'GBP'
+  dueDate?: string | null;
+  placeOfIssue?: string | null;
+  paymentMethod?: ('bank' | 'card' | 'cash' | 'other') | null;
+  currency: 'EUR' | 'BGN' | 'USD' | 'GBP';
   /**
    * The whole client-facing invoice — labels, dates, number formats and the amount in words — is printed in this one language. Defaults to the language set under Invoicing → Settings.
    */
-  language: 'bg' | 'en'
+  language: 'bg' | 'en';
   /**
    * How many units of the invoice currency make one EUR, per the BNB rate on the issue date.
    */
-  exchangeRate?: number | null
+  exchangeRate?: number | null;
   /**
    * What is being billed. Each row prints as one line on the invoice.
    */
@@ -540,515 +539,515 @@ export interface Invoice {
         /**
          * What was delivered, in the client’s language.
          */
-        description: string
+        description: string;
         /**
          * Fractions are fine — 2.5 hours, half a day.
          */
-        quantity: number
-        unit?: ('piece' | 'hour' | 'day' | 'month' | 'project') | null
-        unitPrice: number
+        quantity: number;
+        unit?: ('piece' | 'hour' | 'day' | 'month' | 'project') | null;
+        unitPrice: number;
         /**
          * Calculated.
          */
-        total?: number | null
-        id?: string | null
+        total?: number | null;
+        id?: string | null;
       }[]
-    | null
+    | null;
   /**
    * Optional. Taken off the subtotal as its own line, not spread across the prices.
    */
-  discountPercent?: number | null
-  subtotal?: number | null
-  discountAmount?: number | null
-  total?: number | null
+  discountPercent?: number | null;
+  subtotal?: number | null;
+  discountAmount?: number | null;
+  total?: number | null;
   /**
    * The “(словом)” line, generated from the total. Blank for currencies with no Bulgarian convention.
    */
-  totalInWords?: string | null
+  totalInWords?: string | null;
   /**
    * The total converted at the rate above. Bulgaria keeps its books in EUR.
    */
-  baseTotal?: number | null
+  baseTotal?: number | null;
   /**
    * Printed on the invoice, under the totals. Frozen when the invoice is issued, like everything else the client sees.
    */
-  notes?: string | null
+  notes?: string | null;
   /**
    * Never printed, never frozen — editable for as long as the invoice exists.
    */
-  internalNotes?: string | null
+  internalNotes?: string | null;
   seller?: {
-    legalName?: string | null
-    identifier?: string | null
-    activity?: string | null
-    address?: string | null
-    city?: string | null
-    postalCode?: string | null
-    country?: string | null
-    email?: string | null
-    phone?: string | null
-    website?: string | null
-    bankName?: string | null
-    iban?: string | null
-    bic?: string | null
-    legalNote?: string | null
-  }
+    legalName?: string | null;
+    identifier?: string | null;
+    activity?: string | null;
+    address?: string | null;
+    city?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    website?: string | null;
+    bankName?: string | null;
+    iban?: string | null;
+    bic?: string | null;
+    legalNote?: string | null;
+  };
   billTo?: {
-    name?: string | null
-    kind?: string | null
-    eik?: string | null
-    vatNumber?: string | null
-    responsiblePerson?: string | null
-    address?: string | null
-    city?: string | null
-    postalCode?: string | null
-    country?: string | null
-    email?: string | null
-  }
+    name?: string | null;
+    kind?: string | null;
+    eik?: string | null;
+    vatNumber?: string | null;
+    responsiblePerson?: string | null;
+    address?: string | null;
+    city?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+    email?: string | null;
+  };
   /**
    * Moving off “Чернова” issues the invoice: it takes the next number and stops being editable. There is no way back.
    */
-  status: 'draft' | 'issued' | 'sent' | 'paid' | 'cancelled'
+  status: 'draft' | 'issued' | 'sent' | 'paid' | 'cancelled';
   /**
    * Assigned from the sequence when the invoice is issued.
    */
-  invoiceNumber?: string | null
+  invoiceNumber?: string | null;
   /**
    * Defaults to today when the status is set to paid.
    */
-  paidDate?: string | null
+  paidDate?: string | null;
   /**
    * The client-facing address of this invoice. Generated once, never changes.
    */
-  uuid?: string | null
+  uuid?: string | null;
   /**
    * Send this to the client. It works for anyone holding the link.
    */
-  publicUrl?: string | null
-  updatedAt: string
-  createdAt: string
+  publicUrl?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
-  id: number
-  key: string
+  id: number;
+  key: string;
   data:
     | {
-        [k: string]: unknown
+        [k: string]: unknown;
       }
     | unknown[]
     | string
     | number
     | boolean
-    | null
+    | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
-  id: number
+  id: number;
   document?:
     | ({
-        relationTo: 'albums'
-        value: number | Album
+        relationTo: 'albums';
+        value: number | Album;
       } | null)
     | ({
-        relationTo: 'artworks'
-        value: number | Artwork
+        relationTo: 'artworks';
+        value: number | Artwork;
       } | null)
     | ({
-        relationTo: 'tags'
-        value: number | Tag
+        relationTo: 'tags';
+        value: number | Tag;
       } | null)
     | ({
-        relationTo: 'media'
-        value: number | Media
+        relationTo: 'media';
+        value: number | Media;
       } | null)
     | ({
-        relationTo: 'contact-submissions'
-        value: number | ContactSubmission
+        relationTo: 'contact-submissions';
+        value: number | ContactSubmission;
       } | null)
     | ({
-        relationTo: 'users'
-        value: number | User
+        relationTo: 'users';
+        value: number | User;
       } | null)
     | ({
-        relationTo: 'testimonials'
-        value: number | Testimonial
+        relationTo: 'testimonials';
+        value: number | Testimonial;
       } | null)
     | ({
-        relationTo: 'pages'
-        value: number | Page
+        relationTo: 'pages';
+        value: number | Page;
       } | null)
     | ({
-        relationTo: 'clients'
-        value: number | Client
+        relationTo: 'clients';
+        value: number | Client;
       } | null)
     | ({
-        relationTo: 'invoices'
-        value: number | Invoice
-      } | null)
-  globalSlug?: string | null
+        relationTo: 'invoices';
+        value: number | Invoice;
+      } | null);
+  globalSlug?: string | null;
   user: {
-    relationTo: 'users'
-    value: number | User
-  }
-  updatedAt: string
-  createdAt: string
+    relationTo: 'users';
+    value: number | User;
+  };
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-preferences".
  */
 export interface PayloadPreference {
-  id: number
+  id: number;
   user: {
-    relationTo: 'users'
-    value: number | User
-  }
-  key?: string | null
+    relationTo: 'users';
+    value: number | User;
+  };
+  key?: string | null;
   value?:
     | {
-        [k: string]: unknown
+        [k: string]: unknown;
       }
     | unknown[]
     | string
     | number
     | boolean
-    | null
-  updatedAt: string
-  createdAt: string
+    | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-migrations".
  */
 export interface PayloadMigration {
-  id: number
-  name?: string | null
-  batch?: number | null
-  updatedAt: string
-  createdAt: string
+  id: number;
+  name?: string | null;
+  batch?: number | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "albums_select".
  */
 export interface AlbumsSelect<T extends boolean = true> {
-  _order?: T
-  title?: T
-  generateSlug?: T
-  slug?: T
-  description?: T
-  published?: T
-  isDefault?: T
-  artworks?: T
-  updatedAt?: T
-  createdAt?: T
+  _order?: T;
+  title?: T;
+  generateSlug?: T;
+  slug?: T;
+  description?: T;
+  published?: T;
+  isDefault?: T;
+  artworks?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "artworks_select".
  */
 export interface ArtworksSelect<T extends boolean = true> {
-  _artworks_artworks_order?: T
-  title?: T
-  image?: T
-  album?: T
-  published?: T
-  year?: T
-  medium?: T
-  dimensions?: T
-  description?: T
-  tags?: T
-  updatedAt?: T
-  createdAt?: T
+  _artworks_artworks_order?: T;
+  title?: T;
+  image?: T;
+  album?: T;
+  published?: T;
+  year?: T;
+  medium?: T;
+  dimensions?: T;
+  description?: T;
+  tags?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "tags_select".
  */
 export interface TagsSelect<T extends boolean = true> {
-  name?: T
-  generateSlug?: T
-  slug?: T
-  updatedAt?: T
-  createdAt?: T
+  name?: T;
+  generateSlug?: T;
+  slug?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
-  enabled?: T
-  alt?: T
-  caption?: T
-  updatedAt?: T
-  createdAt?: T
-  url?: T
-  thumbnailURL?: T
-  filename?: T
-  mimeType?: T
-  filesize?: T
-  width?: T
-  height?: T
-  focalX?: T
-  focalY?: T
+  enabled?: T;
+  alt?: T;
+  caption?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
   sizes?:
     | T
     | {
         thumbnail?:
           | T
           | {
-              url?: T
-              width?: T
-              height?: T
-              mimeType?: T
-              filesize?: T
-              filename?: T
-            }
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
         card?:
           | T
           | {
-              url?: T
-              width?: T
-              height?: T
-              mimeType?: T
-              filesize?: T
-              filename?: T
-            }
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
         tablet?:
           | T
           | {
-              url?: T
-              width?: T
-              height?: T
-              mimeType?: T
-              filesize?: T
-              filename?: T
-            }
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
         hero?:
           | T
           | {
-              url?: T
-              width?: T
-              height?: T
-              mimeType?: T
-              filesize?: T
-              filename?: T
-            }
-      }
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "contact-submissions_select".
  */
 export interface ContactSubmissionsSelect<T extends boolean = true> {
-  name?: T
-  email?: T
-  subject?: T
-  message?: T
-  status?: T
-  emailSent?: T
-  emailError?: T
-  userAgent?: T
-  updatedAt?: T
-  createdAt?: T
+  name?: T;
+  email?: T;
+  subject?: T;
+  message?: T;
+  status?: T;
+  emailSent?: T;
+  emailError?: T;
+  userAgent?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
-  name?: T
-  cognitoSub?: T
-  roles?: T
-  updatedAt?: T
-  createdAt?: T
-  email?: T
-  resetPasswordToken?: T
-  resetPasswordExpiration?: T
-  salt?: T
-  hash?: T
-  loginAttempts?: T
-  lockUntil?: T
+  name?: T;
+  cognitoSub?: T;
+  roles?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
   sessions?:
     | T
     | {
-        id?: T
-        createdAt?: T
-        expiresAt?: T
-      }
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "testimonials_select".
  */
 export interface TestimonialsSelect<T extends boolean = true> {
-  _order?: T
-  name?: T
-  testimonial?: T
+  _order?: T;
+  name?: T;
+  testimonial?: T;
   socials?:
     | T
     | {
-        platform?: T
-        href?: T
-        id?: T
-      }
-  rating?: T
-  published?: T
-  updatedAt?: T
-  createdAt?: T
+        platform?: T;
+        href?: T;
+        id?: T;
+      };
+  rating?: T;
+  published?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "pages_select".
  */
 export interface PagesSelect<T extends boolean = true> {
-  title?: T
-  generateSlug?: T
-  slug?: T
-  content?: T
-  published?: T
-  updatedAt?: T
-  createdAt?: T
+  title?: T;
+  generateSlug?: T;
+  slug?: T;
+  content?: T;
+  published?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "clients_select".
  */
 export interface ClientsSelect<T extends boolean = true> {
-  kind?: T
-  name?: T
-  eik?: T
-  vatNumber?: T
-  responsiblePerson?: T
-  address?: T
-  city?: T
-  postalCode?: T
-  country?: T
-  email?: T
-  phone?: T
-  notes?: T
-  archived?: T
-  invoices?: T
-  updatedAt?: T
-  createdAt?: T
+  kind?: T;
+  name?: T;
+  eik?: T;
+  vatNumber?: T;
+  responsiblePerson?: T;
+  address?: T;
+  city?: T;
+  postalCode?: T;
+  country?: T;
+  email?: T;
+  phone?: T;
+  notes?: T;
+  archived?: T;
+  invoices?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "invoices_select".
  */
 export interface InvoicesSelect<T extends boolean = true> {
-  client?: T
-  issueDate?: T
-  dueDate?: T
-  placeOfIssue?: T
-  paymentMethod?: T
-  currency?: T
-  language?: T
-  exchangeRate?: T
+  client?: T;
+  issueDate?: T;
+  dueDate?: T;
+  placeOfIssue?: T;
+  paymentMethod?: T;
+  currency?: T;
+  language?: T;
+  exchangeRate?: T;
   items?:
     | T
     | {
-        description?: T
-        quantity?: T
-        unit?: T
-        unitPrice?: T
-        total?: T
-        id?: T
-      }
-  discountPercent?: T
-  subtotal?: T
-  discountAmount?: T
-  total?: T
-  totalInWords?: T
-  baseTotal?: T
-  notes?: T
-  internalNotes?: T
+        description?: T;
+        quantity?: T;
+        unit?: T;
+        unitPrice?: T;
+        total?: T;
+        id?: T;
+      };
+  discountPercent?: T;
+  subtotal?: T;
+  discountAmount?: T;
+  total?: T;
+  totalInWords?: T;
+  baseTotal?: T;
+  notes?: T;
+  internalNotes?: T;
   seller?:
     | T
     | {
-        legalName?: T
-        identifier?: T
-        activity?: T
-        address?: T
-        city?: T
-        postalCode?: T
-        country?: T
-        email?: T
-        phone?: T
-        website?: T
-        bankName?: T
-        iban?: T
-        bic?: T
-        legalNote?: T
-      }
+        legalName?: T;
+        identifier?: T;
+        activity?: T;
+        address?: T;
+        city?: T;
+        postalCode?: T;
+        country?: T;
+        email?: T;
+        phone?: T;
+        website?: T;
+        bankName?: T;
+        iban?: T;
+        bic?: T;
+        legalNote?: T;
+      };
   billTo?:
     | T
     | {
-        name?: T
-        kind?: T
-        eik?: T
-        vatNumber?: T
-        responsiblePerson?: T
-        address?: T
-        city?: T
-        postalCode?: T
-        country?: T
-        email?: T
-      }
-  status?: T
-  invoiceNumber?: T
-  paidDate?: T
-  uuid?: T
-  publicUrl?: T
-  updatedAt?: T
-  createdAt?: T
+        name?: T;
+        kind?: T;
+        eik?: T;
+        vatNumber?: T;
+        responsiblePerson?: T;
+        address?: T;
+        city?: T;
+        postalCode?: T;
+        country?: T;
+        email?: T;
+      };
+  status?: T;
+  invoiceNumber?: T;
+  paidDate?: T;
+  uuid?: T;
+  publicUrl?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv_select".
  */
 export interface PayloadKvSelect<T extends boolean = true> {
-  key?: T
-  data?: T
+  key?: T;
+  data?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents_select".
  */
 export interface PayloadLockedDocumentsSelect<T extends boolean = true> {
-  document?: T
-  globalSlug?: T
-  user?: T
-  updatedAt?: T
-  createdAt?: T
+  document?: T;
+  globalSlug?: T;
+  user?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-preferences_select".
  */
 export interface PayloadPreferencesSelect<T extends boolean = true> {
-  user?: T
-  key?: T
-  value?: T
-  updatedAt?: T
-  createdAt?: T
+  user?: T;
+  key?: T;
+  value?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-migrations_select".
  */
 export interface PayloadMigrationsSelect<T extends boolean = true> {
-  name?: T
-  batch?: T
-  updatedAt?: T
-  createdAt?: T
+  name?: T;
+  batch?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * Everything rendered on the landing page.
@@ -1057,78 +1056,78 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
  * via the `definition` "homepage".
  */
 export interface Homepage {
-  id: number
-  heading: string
-  subheading?: string | null
+  id: number;
+  heading: string;
+  subheading?: string | null;
   /**
    * Optional. Leave empty for a text-only hero.
    */
-  image?: (number | null) | Media
+  image?: (number | null) | Media;
   /**
    * Disciplines shown as chips under the hero text. Drag the rows to reorder them.
    */
   skills?:
     | {
-        label: string
-        id?: string | null
+        label: string;
+        id?: string | null;
       }[]
-    | null
-  sectionTitle: string
+    | null;
+  sectionTitle: string;
   /**
    * Plain text. Blank lines separate paragraphs.
    */
-  sectionSubtitle?: string | null
+  sectionSubtitle?: string | null;
   /**
    * Albums offered as chips, in this order. The first row is the chip selected when the page loads; "All" sits at the end of the row.
    */
   albums?:
     | {
-        album: number | Album
+        album: number | Album;
         /**
          * No longer used — the first album in this list is the one selected on load. Move an album to the top instead.
          */
-        selectedByDefault?: boolean | null
-        id?: string | null
+        selectedByDefault?: boolean | null;
+        id?: string | null;
       }[]
-    | null
-  aboutHeading: string
+    | null;
+  aboutHeading: string;
   /**
    * Plain text. Blank lines separate paragraphs.
    */
-  aboutBody?: string | null
+  aboutBody?: string | null;
   /**
    * The bullet points beside the about text.
    */
   stats?:
     | {
-        value: string
-        label: string
-        id?: string | null
+        value: string;
+        label: string;
+        id?: string | null;
       }[]
-    | null
+    | null;
   /**
    * Portraits, studio shots, hobbies. Four reads best.
    */
   aboutImages?:
     | {
-        image: number | Media
-        caption?: string | null
-        id?: string | null
+        image: number | Media;
+        caption?: string | null;
+        id?: string | null;
       }[]
-    | null
-  contactsHeading: string
+    | null;
+  contactsHeading: string;
   /**
    * Plain text. Blank lines separate paragraphs.
    */
-  contactsSubtitle?: string | null
+  contactsSubtitle?: string | null;
   /**
    * Falls back to the site name when empty.
    */
-  metaTitle?: string | null
-  metaDescription?: string | null
-  ogImage?: (number | null) | Media
-  updatedAt?: string | null
-  createdAt?: string | null
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  ogImage?: (number | null) | Media;
+  updatedAt?: string | null;
+  createdAt?: string | null;
 }
 /**
  * Contact page copy, published contact details, and who gets notified.
@@ -1137,31 +1136,31 @@ export interface Homepage {
  * via the `definition` "contact-page".
  */
 export interface ContactPage {
-  id: number
-  heading: string
-  intro?: string | null
+  id: number;
+  heading: string;
+  intro?: string | null;
   /**
    * Shown on the page. Not necessarily where the form sends.
    */
-  displayEmail?: string | null
-  phone?: string | null
-  location?: string | null
+  displayEmail?: string | null;
+  phone?: string | null;
+  location?: string | null;
   /**
    * Short line above the form fields.
    */
-  formIntro?: string | null
-  successMessage: string
+  formIntro?: string | null;
+  successMessage: string;
   /**
    * Where submissions are emailed. Falls back to RESEND_FROM_ADDRESS when empty — the message is still saved either way.
    */
   notifyRecipients?:
     | {
-        email: string
-        id?: string | null
+        email: string;
+        id?: string | null;
       }[]
-    | null
-  updatedAt?: string | null
-  createdAt?: string | null
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
 }
 /**
  * Site-wide chrome: name, navigation, socials, footer and SEO fallbacks.
@@ -1170,23 +1169,23 @@ export interface ContactPage {
  * via the `definition` "site-settings".
  */
 export interface SiteSetting {
-  id: number
-  siteName: string
-  tagline?: string | null
-  logo?: (number | null) | Media
+  id: number;
+  siteName: string;
+  tagline?: string | null;
+  logo?: (number | null) | Media;
   /**
    * Navbar links, in order.
    */
   nav?:
     | {
-        label: string
+        label: string;
         /**
          * A path (/contact), a hash (/#about) or an absolute URL.
          */
-        href: string
-        id?: string | null
+        href: string;
+        id?: string | null;
       }[]
-    | null
+    | null;
   socials?:
     | {
         platform:
@@ -1198,25 +1197,25 @@ export interface SiteSetting {
           | 'tiktok'
           | 'youtube'
           | 'artstation'
-          | 'other'
-        url: string
-        id?: string | null
+          | 'other';
+        url: string;
+        id?: string | null;
       }[]
-    | null
+    | null;
   /**
    * Shown beside the copyright line.
    */
-  footerText?: string | null
+  footerText?: string | null;
   /**
    * Used wherever a page does not set its own.
    */
   seo?: {
-    metaTitle?: string | null
-    metaDescription?: string | null
-    ogImage?: (number | null) | Media
-  }
-  updatedAt?: string | null
-  createdAt?: string | null
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    ogImage?: (number | null) | Media;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
 }
 /**
  * The artist’s own details as they print on every invoice, the bank account, and the number sequence.
@@ -1225,181 +1224,181 @@ export interface SiteSetting {
  * via the `definition` "invoice-settings".
  */
 export interface InvoiceSetting {
-  id: number
+  id: number;
   seller: {
     /**
      * The name registered with the NRA, not the artistic alias.
      */
-    legalName: string
+    legalName: string;
     /**
      * The BULSTAT number issued for the freelance registration.
      */
-    identifier: string
+    identifier: string;
     /**
      * e.g. “Свободна професия — художник”.
      */
-    activity?: string | null
-    address: string
-    city: string
-    postalCode?: string | null
-    country: string
-    email?: string | null
-    phone?: string | null
-    website?: string | null
-  }
+    activity?: string | null;
+    address: string;
+    city: string;
+    postalCode?: string | null;
+    country: string;
+    email?: string | null;
+    phone?: string | null;
+    website?: string | null;
+  };
   /**
    * Printed under the total on Bulgarian invoices. The default is the statement a person who is not registered under the VAT act is required to put on an invoice. Change it only on your accountant’s advice — if you ever register for VAT, this is where that changes.
    */
-  legalNote?: string | null
+  legalNote?: string | null;
   /**
    * The same statement for invoices printed in English. Keep the reference to the Bulgarian statute — that is what makes it a legal statement rather than a remark. Left blank, English invoices fall back to the Bulgarian wording above.
    */
-  legalNoteEn?: string | null
+  legalNoteEn?: string | null;
   /**
    * Optional. Shown top-left on the invoice.
    */
-  logo?: (number | null) | Media
+  logo?: (number | null) | Media;
   /**
    * Optional scan, shown above the issuer’s name. Unlike the text fields, the logo and signature are read live rather than frozen per invoice — they are branding, not legal identity.
    */
-  signature?: (number | null) | Media
+  signature?: (number | null) | Media;
   bank?: {
-    name?: string | null
-    iban?: string | null
-    bic?: string | null
-  }
+    name?: string | null;
+    iban?: string | null;
+    bic?: string | null;
+  };
   numbering: {
     /**
      * The sequence value the next issued invoice will take, padded to ten digits. Set this once, before issuing the first invoice, to continue a sequence started elsewhere — after that it advances on its own. Lowering it cannot create a duplicate: the number actually used is always at least one more than the highest already issued.
      */
-    nextNumber: number
-  }
+    nextNumber: number;
+  };
   /**
    * Prefilled on every new invoice. Each one stays editable per invoice.
    */
   defaults?: {
-    currency?: ('EUR' | 'BGN' | 'USD' | 'GBP') | null
+    currency?: ('EUR' | 'BGN' | 'USD' | 'GBP') | null;
     /**
      * Days from the issue date to the due date.
      */
-    paymentTermsDays?: number | null
-    placeOfIssue?: string | null
-    paymentMethod?: ('bank' | 'card' | 'cash' | 'other') | null
+    paymentTermsDays?: number | null;
+    placeOfIssue?: string | null;
+    paymentMethod?: ('bank' | 'card' | 'cash' | 'other') | null;
     /**
      * Which language new invoices are printed in. Set per invoice as well.
      */
-    language?: ('bg' | 'en') | null
+    language?: ('bg' | 'en') | null;
     /**
      * Printed at the foot of the invoice, under the legal note.
      */
-    notes?: string | null
-  }
-  updatedAt?: string | null
-  createdAt?: string | null
+    notes?: string | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "homepage_select".
  */
 export interface HomepageSelect<T extends boolean = true> {
-  heading?: T
-  subheading?: T
-  image?: T
+  heading?: T;
+  subheading?: T;
+  image?: T;
   skills?:
     | T
     | {
-        label?: T
-        id?: T
-      }
-  sectionTitle?: T
-  sectionSubtitle?: T
+        label?: T;
+        id?: T;
+      };
+  sectionTitle?: T;
+  sectionSubtitle?: T;
   albums?:
     | T
     | {
-        album?: T
-        selectedByDefault?: T
-        id?: T
-      }
-  aboutHeading?: T
-  aboutBody?: T
+        album?: T;
+        selectedByDefault?: T;
+        id?: T;
+      };
+  aboutHeading?: T;
+  aboutBody?: T;
   stats?:
     | T
     | {
-        value?: T
-        label?: T
-        id?: T
-      }
+        value?: T;
+        label?: T;
+        id?: T;
+      };
   aboutImages?:
     | T
     | {
-        image?: T
-        caption?: T
-        id?: T
-      }
-  contactsHeading?: T
-  contactsSubtitle?: T
-  metaTitle?: T
-  metaDescription?: T
-  ogImage?: T
-  updatedAt?: T
-  createdAt?: T
-  globalType?: T
+        image?: T;
+        caption?: T;
+        id?: T;
+      };
+  contactsHeading?: T;
+  contactsSubtitle?: T;
+  metaTitle?: T;
+  metaDescription?: T;
+  ogImage?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "contact-page_select".
  */
 export interface ContactPageSelect<T extends boolean = true> {
-  heading?: T
-  intro?: T
-  displayEmail?: T
-  phone?: T
-  location?: T
-  formIntro?: T
-  successMessage?: T
+  heading?: T;
+  intro?: T;
+  displayEmail?: T;
+  phone?: T;
+  location?: T;
+  formIntro?: T;
+  successMessage?: T;
   notifyRecipients?:
     | T
     | {
-        email?: T
-        id?: T
-      }
-  updatedAt?: T
-  createdAt?: T
-  globalType?: T
+        email?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-settings_select".
  */
 export interface SiteSettingsSelect<T extends boolean = true> {
-  siteName?: T
-  tagline?: T
-  logo?: T
+  siteName?: T;
+  tagline?: T;
+  logo?: T;
   nav?:
     | T
     | {
-        label?: T
-        href?: T
-        id?: T
-      }
+        label?: T;
+        href?: T;
+        id?: T;
+      };
   socials?:
     | T
     | {
-        platform?: T
-        url?: T
-        id?: T
-      }
-  footerText?: T
+        platform?: T;
+        url?: T;
+        id?: T;
+      };
+  footerText?: T;
   seo?:
     | T
     | {
-        metaTitle?: T
-        metaDescription?: T
-        ogImage?: T
-      }
-  updatedAt?: T
-  createdAt?: T
-  globalType?: T
+        metaTitle?: T;
+        metaDescription?: T;
+        ogImage?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1409,46 +1408,46 @@ export interface InvoiceSettingsSelect<T extends boolean = true> {
   seller?:
     | T
     | {
-        legalName?: T
-        identifier?: T
-        activity?: T
-        address?: T
-        city?: T
-        postalCode?: T
-        country?: T
-        email?: T
-        phone?: T
-        website?: T
-      }
-  legalNote?: T
-  legalNoteEn?: T
-  logo?: T
-  signature?: T
+        legalName?: T;
+        identifier?: T;
+        activity?: T;
+        address?: T;
+        city?: T;
+        postalCode?: T;
+        country?: T;
+        email?: T;
+        phone?: T;
+        website?: T;
+      };
+  legalNote?: T;
+  legalNoteEn?: T;
+  logo?: T;
+  signature?: T;
   bank?:
     | T
     | {
-        name?: T
-        iban?: T
-        bic?: T
-      }
+        name?: T;
+        iban?: T;
+        bic?: T;
+      };
   numbering?:
     | T
     | {
-        nextNumber?: T
-      }
+        nextNumber?: T;
+      };
   defaults?:
     | T
     | {
-        currency?: T
-        paymentTermsDays?: T
-        placeOfIssue?: T
-        paymentMethod?: T
-        language?: T
-        notes?: T
-      }
-  updatedAt?: T
-  createdAt?: T
-  globalType?: T
+        currency?: T;
+        paymentTermsDays?: T;
+        placeOfIssue?: T;
+        paymentMethod?: T;
+        language?: T;
+        notes?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1456,17 +1455,18 @@ export interface InvoiceSettingsSelect<T extends boolean = true> {
  */
 export interface CollectionsWidget {
   data?: {
-    [k: string]: unknown
-  }
-  width: 'full'
+    [k: string]: unknown;
+  };
+  width: 'full';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "auth".
  */
 export interface Auth {
-  [k: string]: unknown
+  [k: string]: unknown;
 }
+
 
 declare module 'payload' {
   export interface GeneratedTypes extends Config {}

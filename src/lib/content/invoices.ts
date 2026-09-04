@@ -49,7 +49,8 @@ import { isIssued } from '@/lib/invoicing/status'
  * invoice.
  */
 export type InvoiceImage = {
-  alt: string
+  /** `null` when the upload carries no alt; the caller names the image instead. */
+  alt: null | string
   height: null | number
   url: string
   width: null | number
@@ -101,7 +102,7 @@ const toInvoiceImage = (media: Media | null | number | undefined): InvoiceImage 
   }
 
   return {
-    alt: media.alt,
+    alt: media.alt ?? null,
     height: media.height ?? null,
     url: media.url,
     width: media.width ?? null,

@@ -23,7 +23,7 @@ const { APP_URL: ORIGINAL_APP_URL, NEXT_PUBLIC_SERVER_URL: ORIGINAL_SERVER_URL }
 
 type Card = {
   description?: string
-  images?: { alt: string; height?: number; url: string; width?: number }[]
+  images?: { alt?: string; height?: number; url: string; width?: number }[]
   siteName?: string
   title?: string
   url?: string
@@ -208,6 +208,16 @@ describe('seo metadata', () => {
           width: 1200,
         },
       ])
+    })
+
+    it('omits the alt when the upload has none', () => {
+      const meta = pageMetadata({
+        image: toGalleryImage(media({ alt: null, url: '/api/media/file/piece.jpg' })),
+        path: '/a',
+        settings: settings(),
+      })
+
+      expect(og(meta).images).toEqual([{ url: `${ORIGIN}/api/media/file/piece.jpg` }])
     })
 
     it('keeps a CDN URL absolute, with no origin configured', () => {

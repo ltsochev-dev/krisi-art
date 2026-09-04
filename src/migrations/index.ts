@@ -12,6 +12,7 @@ import * as migration_20260825_200000_orderable_testimonials from './20260825_20
 import * as migration_20260827_071502_invoicing from './20260827_071502_invoicing'
 import * as migration_20260827_075943_invoice_language from './20260827_075943_invoice_language'
 import * as migration_20260827_080440_invoice_legal_note_en from './20260827_080440_invoice_legal_note_en'
+import * as migration_20260904_132850_media_alt_optional from './20260904_132850_media_alt_optional'
 
 export const migrations = [
   {
@@ -83,5 +84,10 @@ export const migrations = [
     up: migration_20260827_080440_invoice_legal_note_en.up,
     down: migration_20260827_080440_invoice_legal_note_en.down,
     name: '20260827_080440_invoice_legal_note_en',
+  },
+  {
+    up: migration_20260904_132850_media_alt_optional.up,
+    down: migration_20260904_132850_media_alt_optional.down,
+    name: '20260904_132850_media_alt_optional',
   },
 ]
