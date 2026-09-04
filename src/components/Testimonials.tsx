@@ -3,7 +3,12 @@
 import { motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import posthog from 'posthog-js'
+
 import type { getTestimonials } from '@/lib/content/queries'
+
+import TestimonialModal from '@/components/TestimonialModal'
+import { isClipped, toParagraphs } from '@/lib/content/testimonials'
 
 type TestimonialList = Awaited<ReturnType<typeof getTestimonials>>
 
@@ -22,6 +27,8 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
   const frame = useRef<number | null>(null)
 
   const [active, setActive] = useState(0)
+  // Index of the testimonial shown in the modal; null is closed.
+  const [expanded, setExpanded] = useState<null | number>(null)
   // Number of reachable snap positions. Smaller than the card count once the
   // last few cards share the final scroll position, and 0 while everything
   // still fits on screen — which is what hides the controls entirely.
@@ -182,43 +189,82 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
             // small screens while `scroll-px` keeps the snap points inset.
             className="-mx-6 flex snap-x snap-mandatory scroll-px-6 [scrollbar-width:none] gap-6 overflow-x-auto px-6 py-4 focus-visible:outline-none [&::-webkit-scrollbar]:hidden"
           >
-            {testimonials.map((testimonial, index) => (
-              <figure
-                key={testimonial.id}
-                ref={(node) => {
-                  cardRefs.current[index] = node
-                }}
-                aria-roledescription="slide"
-                aria-label={`${index + 1} of ${testimonials.length}`}
-                style={{
-                  transform: 'scale(var(--card-scale, 1))',
-                  opacity: 'var(--card-fade, 1)',
-                }}
-                className="w-[82%] shrink-0 snap-start will-change-transform sm:w-[48%] lg:w-[31%]"
-              >
-                <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-8 transition-colors duration-300 hover:border-primary">
-                  <blockquote className="flex-1 font-sans text-muted-foreground">
-                    {/* Plain text out of a textarea, same as the about body: blank
+            {testimonials.map((testimonial, index) => {
+              const clipped = isClipped(testimonial.testimonial)
+
+              return (
+                <figure
+                  key={testimonial.id}
+                  ref={(node) => {
+                    cardRefs.current[index] = node
+                  }}
+                  aria-roledescription="slide"
+                  aria-label={`${index + 1} of ${testimonials.length}`}
+                  style={{
+                    transform: 'scale(var(--card-scale, 1))',
+                    opacity: 'var(--card-fade, 1)',
+                  }}
+                  className="w-[82%] shrink-0 snap-start will-change-transform sm:w-[48%] lg:w-[31%]"
+                >
+                  <div className="relative flex h-full flex-col rounded-2xl border border-border bg-card p-8 transition-colors duration-300 focus-within:border-primary hover:border-primary">
+                    {/* The whole body is rendered whether or not it is clipped —
+                      the cut is `max-h` plus a mask, so a long quote costs a
+                      crawler nothing. `max-h-44` is a shade over the seven lines
+                      `TESTIMONIAL_CLIP_LIMIT` characters occupy, so a body that
+                      trips the limit is always visibly cut. */}
+                    <blockquote
+                      className={`flex-1 font-sans text-muted-foreground ${
+                        clipped
+                          ? 'max-h-44 overflow-hidden [mask-image:linear-gradient(to_bottom,black_62%,transparent)]'
+                          : ''
+                      }`}
+                    >
+                      {/* Plain text out of a textarea, same as the about body: blank
                         lines separate paragraphs. */}
-                    {testimonial.testimonial
-                      .split(/\n{2,}/)
-                      .filter(Boolean)
-                      .map((paragraph, paragraphIndex) => (
+                      {toParagraphs(testimonial.testimonial).map((paragraph, paragraphIndex) => (
                         <p key={paragraphIndex} className="mb-4 last:mb-0">
                           {paragraph}
                         </p>
                       ))}
-                  </blockquote>
+                    </blockquote>
 
-                  {/* `testimonial.socials` is deliberately not rendered. The rating
+                    {clipped ? (
+                      // Presentational only. The accessible control is the overlay
+                      // button below, which covers the card; a real <button> here
+                      // would nest one interactive element inside another.
+                      <span
+                        aria-hidden="true"
+                        className="mt-4 self-start font-sans text-xs tracking-widest text-primary uppercase underline decoration-primary/40 underline-offset-4"
+                      >
+                        Read more
+                      </span>
+                    ) : null}
+
+                    {/* `testimonial.socials` is deliberately not rendered. The rating
                       is internal-only per its field description, and the social
                       links stay out of the card for now. */}
-                  <figcaption className="mt-6 border-t border-border pt-4 font-sans text-sm tracking-widest text-foreground uppercase">
-                    {testimonial.name}
-                  </figcaption>
-                </div>
-              </figure>
-            ))}
+                    <figcaption className="mt-6 border-t border-border pt-4 font-sans text-sm tracking-widest text-foreground uppercase">
+                      {testimonial.name}
+                    </figcaption>
+
+                    {clipped ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          posthog.capture('testimonial_expanded', {
+                            testimonial_id: testimonial.id,
+                            testimonial_name: testimonial.name,
+                          })
+                          setExpanded(index)
+                        }}
+                        aria-label={`Read the full testimonial from ${testimonial.name}`}
+                        className="absolute inset-0 cursor-pointer rounded-2xl focus-visible:outline-none"
+                      />
+                    ) : null}
+                  </div>
+                </figure>
+              )
+            })}
           </div>
 
           {hasControls ? (
@@ -261,6 +307,14 @@ const Testimonials = ({ title = 'Kind Words', subtitle, testimonials = [] }: Pro
           ) : null}
         </motion.div>
       </div>
+
+      {/* One instance for the whole carousel rather than one per card. */}
+      <TestimonialModal
+        body={expanded === null ? undefined : testimonials[expanded]?.testimonial}
+        name={expanded === null ? undefined : testimonials[expanded]?.name}
+        onClose={() => setExpanded(null)}
+        open={expanded !== null}
+      />
     </section>
   )
 }
