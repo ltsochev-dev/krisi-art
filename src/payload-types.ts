@@ -77,6 +77,8 @@ export interface Config {
     pages: Page;
     clients: Client;
     invoices: Invoice;
+    commissions: Commission;
+    'commission-access-log': CommissionAccessLog;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -88,6 +90,9 @@ export interface Config {
     };
     clients: {
       invoices: 'invoices';
+    };
+    commissions: {
+      accessLog: 'commission-access-log';
     };
   };
   collectionsSelect: {
@@ -101,6 +106,8 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     clients: ClientsSelect<false> | ClientsSelect<true>;
     invoices: InvoicesSelect<false> | InvoicesSelect<true>;
+    commissions: CommissionsSelect<false> | CommissionsSelect<true>;
+    'commission-access-log': CommissionAccessLogSelect<false> | CommissionAccessLogSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -628,6 +635,125 @@ export interface Invoice {
   createdAt: string;
 }
 /**
+ * Private file delivery. Upload the files, tick Enabled, then send the client the public link from the sidebar. Every view and download is recorded below.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "commissions".
+ */
+export interface Commission {
+  id: number;
+  /**
+   * Shown to the client at the top of the page. Name it after the work.
+   */
+  title: string;
+  /**
+   * Optional. Rendered above the file list, for delivery notes or instructions.
+   */
+  description?: string | null;
+  /**
+   * Managed by the uploader above. Read-only here so a row can never lose track of its file in the bucket.
+   */
+  files?:
+    | {
+        fileId: string;
+        /**
+         * The object key in the private bucket.
+         */
+        key: string;
+        filename: string;
+        /**
+         * Optional. Shown to the client instead of the filename.
+         */
+        label?: string | null;
+        filesize?: number | null;
+        mimeType?: string | null;
+        uploadedAt?: string | null;
+        downloadCount?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Never shown to the client, and never sent to the browser on the public page.
+   */
+  internalNotes?: string | null;
+  /**
+   * Every view, download and unlock attempt on the public link.
+   */
+  accessLog?: {
+    docs?: (number | CommissionAccessLog)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * Until this is ticked the public link returns “not available”.
+   */
+  enabled?: boolean | null;
+  /**
+   * Optional. From this day on the link stops resolving.
+   */
+  expiresAt?: string | null;
+  /**
+   * Optional second gate on top of the link. Type one and save to set or change it — it is hashed immediately and never stored or shown in plain text, so this box is always empty. Saving with it empty leaves the current password alone; to remove one, tick “Remove password”.
+   */
+  password?: string | null;
+  /**
+   * Tick and save to remove the password. Resets itself afterwards.
+   */
+  removePassword?: boolean | null;
+  passwordHash?: string | null;
+  /**
+   * Whether this commission is password protected.
+   */
+  hasPassword?: boolean | null;
+  viewCount?: number | null;
+  downloadCount?: number | null;
+  lastAccessedAt?: string | null;
+  /**
+   * The client-facing address of this commission. Generated once, never changes.
+   */
+  uuid?: string | null;
+  /**
+   * Send this to the client. It works for anyone holding the link.
+   */
+  publicUrl?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Append-only record of access to commission links. Contains raw IP addresses, retained indefinitely.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "commission-access-log".
+ */
+export interface CommissionAccessLog {
+  id: number;
+  commission: number | Commission;
+  event: 'view' | 'download' | 'unlock-success' | 'unlock-failed' | 'denied';
+  /**
+   * Set on download events only.
+   */
+  filename?: string | null;
+  fileId?: string | null;
+  /**
+   * Why the request was refused: disabled, expired, no-password, rate-limited.
+   */
+  reason?: string | null;
+  /**
+   * As reported by the reverse proxy. Trivially spoofable by a direct caller — forensic colour, not access control.
+   */
+  ip?: string | null;
+  browser?: string | null;
+  os?: string | null;
+  deviceType?: string | null;
+  userAgent?: string | null;
+  /**
+   * Where the link was clicked from, when the browser says.
+   */
+  referer?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -690,6 +816,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'invoices';
         value: number | Invoice;
+      } | null)
+    | ({
+        relationTo: 'commissions';
+        value: number | Commission;
+      } | null)
+    | ({
+        relationTo: 'commission-access-log';
+        value: number | CommissionAccessLog;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1006,6 +1140,61 @@ export interface InvoicesSelect<T extends boolean = true> {
   paidDate?: T;
   uuid?: T;
   publicUrl?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "commissions_select".
+ */
+export interface CommissionsSelect<T extends boolean = true> {
+  title?: T;
+  description?: T;
+  files?:
+    | T
+    | {
+        fileId?: T;
+        key?: T;
+        filename?: T;
+        label?: T;
+        filesize?: T;
+        mimeType?: T;
+        uploadedAt?: T;
+        downloadCount?: T;
+        id?: T;
+      };
+  internalNotes?: T;
+  accessLog?: T;
+  enabled?: T;
+  expiresAt?: T;
+  password?: T;
+  removePassword?: T;
+  passwordHash?: T;
+  hasPassword?: T;
+  viewCount?: T;
+  downloadCount?: T;
+  lastAccessedAt?: T;
+  uuid?: T;
+  publicUrl?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "commission-access-log_select".
+ */
+export interface CommissionAccessLogSelect<T extends boolean = true> {
+  commission?: T;
+  event?: T;
+  filename?: T;
+  fileId?: T;
+  reason?: T;
+  ip?: T;
+  browser?: T;
+  os?: T;
+  deviceType?: T;
+  userAgent?: T;
+  referer?: T;
   updatedAt?: T;
   createdAt?: T;
 }

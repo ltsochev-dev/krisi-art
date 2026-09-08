@@ -10,6 +10,8 @@ import sharp from 'sharp'
 import { Albums } from './collections/Albums'
 import { Artworks } from './collections/Artworks'
 import { Clients } from './collections/Clients'
+import { CommissionAccessLog } from './collections/CommissionAccessLog'
+import { Commissions } from './collections/Commissions'
 import { ContactSubmissions } from './collections/ContactSubmissions'
 import { Invoices } from './collections/Invoices'
 import { Media } from './collections/Media'
@@ -134,6 +136,8 @@ export default buildConfig({
     Pages,
     Clients,
     Invoices,
+    Commissions,
+    CommissionAccessLog,
   ],
   globals: [Homepage, ContactPage, SiteSettings, InvoiceSettings],
   // The app only talks to Payload through the Local API and REST, so the

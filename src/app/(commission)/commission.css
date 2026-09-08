@@ -1,0 +1,250 @@
+/**
+ * The commission page's stylesheet — deliberately plain CSS, and deliberately
+ * not the site's.
+ *
+ * Same two reasons `(invoice)/invoice.css` gives. That stylesheet defines a
+ * palette that is dark unconditionally and redefines Tailwind's `dark:` variant
+ * to a bare `&`, which is right for the portfolio and wrong for a page a client
+ * opens to find a download button. And there is nothing to reuse: this is one
+ * layout with a dozen rules, whereas Tailwind's value is composing a design
+ * system across many components. Pulling the whole Tailwind layer into a second
+ * root layout to style one page is not a trade worth making.
+ *
+ * Unlike the invoice, this is **not** a print stylesheet. Nobody prints a file
+ * list, so everything is sized in `rem` and the layout is a single column that
+ * happens to stop growing on a wide screen — a phone is the likeliest device
+ * here, since the link usually arrives in a chat app.
+ */
+
+:root {
+  --ink: #1b1b1f;
+  --ink-soft: #63636e;
+  --rule: #e3e3e8;
+  --paper: #ffffff;
+  --desk: #f4f4f6;
+  --accent: #1b1b1f;
+  --accent-ink: #ffffff;
+  --danger: #a4262c;
+  --danger-bg: #fdf2f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--desk);
+  color: var(--ink);
+  font-family: var(--font-sans-family), 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- The card ------------------------------------------------------------ */
+
+.page {
+  margin: 0 auto;
+  max-width: 42rem;
+  padding: 2rem 1rem 4rem;
+}
+
+.card {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 0.75rem;
+  padding: 1.75rem;
+}
+
+.card__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.card__intro {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+  margin: 0.75rem 0 0;
+  /* The description is a textarea in the admin panel, so the artist's own line
+     breaks are the layout. */
+  white-space: pre-line;
+}
+
+.card__heading {
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin: 2rem 0 0;
+  padding-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+/* --- The file list ------------------------------------------------------- */
+
+.files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.file {
+  align-items: center;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  padding: 1rem 0;
+}
+
+.file:last-child {
+  border-bottom: 0;
+}
+
+.file__text {
+  /* `min-width: 0` so a long unbroken filename shrinks instead of pushing the
+     download button off a narrow screen. */
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.file__name {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.file__meta {
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+}
+
+.file__error {
+  color: var(--danger);
+  flex: 1 1 100%;
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+/* --- Buttons ------------------------------------------------------------- */
+
+.button {
+  background: var(--accent);
+  border: 0;
+  border-radius: 0.5rem;
+  color: var(--accent-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  /* A comfortable thumb target, and wide enough that the label swapping to
+     "Preparing…" does not resize the row. */
+  min-width: 8.5rem;
+  padding: 0.625rem 1.25rem;
+  text-align: center;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--ink-soft);
+}
+
+.button:disabled {
+  cursor: progress;
+  opacity: 0.55;
+}
+
+/* --- The password gate --------------------------------------------------- */
+
+.gate {
+  text-align: center;
+}
+
+.gate__body {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+  margin: 0.75rem auto 1.5rem;
+  max-width: 26rem;
+}
+
+.gate__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.gate__input {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 0.5rem;
+  color: var(--ink);
+  flex: 1 1 14rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  max-width: 20rem;
+  padding: 0.625rem 0.875rem;
+}
+
+.gate__input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.alert {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: 0.5rem;
+  color: var(--danger);
+  font-size: 0.875rem;
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+/* --- Footnote and not-found --------------------------------------------- */
+
+.note {
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  margin: 1.5rem 0 0;
+  text-align: center;
+}
+
+.missing {
+  margin: 6rem auto;
+  max-width: 26rem;
+  padding: 0 1rem;
+  text-align: center;
+}
+
+.missing h1 {
+  font-size: 1.25rem;
+  margin: 0 0 0.75rem;
+}
+
+.missing p {
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* --- Narrow screens ----------------------------------------------------- */
+
+@media screen and (max-width: 30rem) {
+  .card {
+    padding: 1.25rem;
+  }
+
+  /* The row stacks, and the button takes the full width — a 44px-tall target
+     across the card is easier to hit than one floated to the right. */
+  .file {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .button {
+    width: 100%;
+  }
+}

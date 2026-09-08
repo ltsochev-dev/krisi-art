@@ -120,6 +120,71 @@ Cognito Hosted UI is the only identity provider. The flow lives in
 App client configuration (callback/sign-out URLs, scopes) is spelled out in
 `.env.example`.
 
+## Commissions
+
+Private file delivery for finished work. A commission is a titled set of files —
+images, PDFs or archives, up to 500 MB each — that the artist uploads in the
+admin and hands over as a single link, `/commission/<uuid>`. Whoever opens it
+gets the file list and downloads each file through a short-lived presigned S3
+URL. Uploads go from the browser straight to S3 with a presigned `PUT`, so
+deliverables never transit the VPS in either direction.
+
+**Possession of the UUID is the authorisation.** Exactly as with
+`/invoice/<uuid>`: the collection is editors-only and the public read is one
+deliberate `overrideAccess: true` in `src/lib/content/commissions.ts`. On top of
+that a commission may carry an optional **password** — scrypt-hashed, plaintext
+never stored, and unlocking sets an httpOnly cookie scoped to that one
+commission's path — and an optional **expiry date**. It also stays
+`enabled: false` until the artist flips it, so a half-finished upload set is
+never briefly live. Unknown, disabled and expired links all 404 identically, so
+the page never confirms that a UUID was ever valid.
+
+**Two buckets, not two prefixes.** Media lives in `S3_BUCKET` and is public by
+design — `S3_CDN_URL` puts a CloudFront distribution in front of it so gallery
+image bytes never touch this server. Commission deliverables must never be
+reachable that way, so they live in their own bucket, `S3_COMMISSIONS_BUCKET`,
+with public access blocked, no bucket policy and no CDN. A presigned URL is
+therefore the only read path by construction rather than by configuration — a
+prefix inside the media bucket would have left client deliverables one CDN
+misconfiguration away from being public.
+Provisioning it is recorded in
+[`docs/plans/commissions-infra.md`](docs/plans/commissions-infra.md), which is
+the only place that infrastructure is written down; none of it is in Terraform.
+Leave `S3_COMMISSIONS_BUCKET` unset and the commission endpoints answer "file
+storage is not configured" while the rest of the app is unaffected.
+
+**The bucket needs a CORS rule.** The presigned `PUT` is issued by this app but
+executed by the browser against `https://<bucket>.s3.<region>.amazonaws.com`,
+which is cross-origin. Without a `PUT` rule listing the exact origin the admin
+panel is served from, the upload fails with an opaque `status === 0` and no
+response body, while the same request through `curl` succeeds — `curl` does not
+enforce CORS, so the bucket looks fine from a terminal. Downloads are top-level
+navigations rather than XHR and need no rule. The current origins and the fact
+that `put-bucket-cors` replaces the whole configuration instead of merging are
+in the infra doc.
+
+**Presigned lifetimes** default to 300 seconds for downloads — the URL is handed
+to the browser as JSON and navigated to at once, so it only has to survive one
+click — and 900 seconds for uploads, which is a whole `PUT` on a slow
+connection. Override with `COMMISSION_DOWNLOAD_TTL_SECONDS` and
+`COMMISSION_UPLOAD_TTL_SECONDS`.
+
+**Views and downloads are logged locally**, in the `commission-access-log`
+collection, and shown on the commission document. No analytics service is
+involved. The log stores the client's **raw IP address, unhashed and retained
+indefinitely** — the site owner's explicit decision, not an oversight, and there
+is no prune job. That is personal data under the GDPR, so the **privacy policy
+needs a line covering it**: edit the Privacy Policy page in the admin (_Pages →
+Privacy Policy_, slug `privacy`). Note that the IP is only as trustworthy as the
+reverse proxy in front of the container and is trivially spoofable by a direct
+caller — it is forensic colour, not access control.
+
+Deployment: `S3_COMMISSIONS_BUCKET` belongs in the VPS `.env` alongside the other
+S3 variables. It is a runtime value, not a build arg and not a GitHub Actions
+variable, and a deploy never rewrites that file — see
+[Server-side layout](#server-side-layout). Region, credentials, endpoint and
+path-style are shared with the media bucket; there is one S3 client.
+
 ## Migrations
 
 Migrations live in `src/migrations` and are imported statically into
@@ -306,14 +371,14 @@ Secrets (**Settings → Secrets and variables → Actions → Secrets**):
 
 Variables (same page, **Variables** tab) — all optional:
 
-| Variable         | Default                                             |
-| ---------------- | --------------------------------------------------- |
-| `DEPLOY_DIR`     | `/opt/krisi-art`                                    |
-| `DEPLOY_PORT`    | `22`                                                |
-| `DEPLOY_SERVICE` | `app`                                               |
-| `APP_URL`        | unset; recorded as the deployment's environment URL |
+| Variable                            | Default                                                                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DEPLOY_DIR`                        | `/opt/krisi-art`                                                                                                                                 |
+| `DEPLOY_PORT`                       | `22`                                                                                                                                             |
+| `DEPLOY_SERVICE`                    | `app`                                                                                                                                            |
+| `APP_URL`                           | unset; recorded as the deployment's environment URL                                                                                              |
 | `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` | unset; browser PostHog token, passed to `docker build` as a build arg. A variable and not a secret on purpose — it ships to every visitor anyway |
-| `NEXT_PUBLIC_POSTHOG_HOST` | unset; PostHog ingestion origin, e.g. `https://eu.i.posthog.com` |
+| `NEXT_PUBLIC_POSTHOG_HOST`          | unset; PostHog ingestion origin, e.g. `https://eu.i.posthog.com`                                                                                 |
 
 Both `NEXT_PUBLIC_*` entries are **build-time only**. `next build` replaces every
 `process.env.NEXT_PUBLIC_*` read with a literal in the JS it emits, so the

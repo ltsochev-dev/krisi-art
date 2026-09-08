@@ -179,10 +179,10 @@ describe('crawler metadata routes', () => {
       expect(byUrl.get(`${ORIGIN}/gallery/${album.slug}`)?.lastModified).toBe(newestArtworkAt)
     })
 
-    it('never exposes the admin, the API or an invoice', () => {
+    it('never exposes the admin, the API, an invoice or a commission', () => {
       const paths = entries().map((entry) => new URL(entry.url).pathname)
 
-      expect(paths.filter((path) => /^\/(admin|api|invoice)\b/.test(path))).toEqual([])
+      expect(paths.filter((path) => /^\/(admin|api|commission|invoice)\b/.test(path))).toEqual([])
     })
 
     it('is empty rather than relative when no origin is configured', () => {
@@ -191,9 +191,9 @@ describe('crawler metadata routes', () => {
   })
 
   describe('robots.txt', () => {
-    it('closes off the admin, the API and invoices', () => {
+    it('closes off the admin, the API, invoices and commissions', () => {
       expect(robots().rules).toMatchObject({
-        disallow: ['/admin', '/api/', '/invoice/'],
+        disallow: ['/admin', '/api/', '/commission/', '/invoice/'],
         userAgent: '*',
       })
     })

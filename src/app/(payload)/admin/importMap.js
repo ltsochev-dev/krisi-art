@@ -22,6 +22,7 @@ import { StrikethroughFeatureClient as StrikethroughFeatureClient_e70f5e05f09f93
 import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { CommissionUploader as CommissionUploader_31415710a3e7929d2cd06344617cbc56 } from '@/components/admin/CommissionUploader'
 import { CognitoLogoutButton as CognitoLogoutButton_c1ad7bf6acac9a013ff5734ac1c3a481 } from '@/components/admin/CognitoLogoutButton'
 import { CognitoLoginButton as CognitoLoginButton_11b3c5120233c4ecd779c50377d52534 } from '@/components/admin/CognitoLoginButton'
 import { S3ClientUploadHandler as S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24 } from '@payloadcms/storage-s3/client'
@@ -76,6 +77,8 @@ export const importMap = {
     BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   '@payloadcms/richtext-lexical/client#ItalicFeatureClient':
     ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  '@/components/admin/CommissionUploader#CommissionUploader':
+    CommissionUploader_31415710a3e7929d2cd06344617cbc56,
   '@/components/admin/CognitoLogoutButton#CognitoLogoutButton':
     CognitoLogoutButton_c1ad7bf6acac9a013ff5734ac1c3a481,
   '@/components/admin/CognitoLoginButton#CognitoLoginButton':

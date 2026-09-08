@@ -23,6 +23,11 @@
  *   sends `noindex` (see `(invoice)/invoice/[uuid]/layout.tsx`); this keeps a
  *   crawler that somehow has the link from fetching it at all. Note that
  *   robots.txt is public, so this discloses only the route shape, never a UUID.
+ * - `/commission/` — the same story for client file deliveries. Unguessable
+ *   UUID, already `noindex` at the route, and the only thing disclosed here is
+ *   that the route exists. Worth closing off twice: a crawler that fetched one
+ *   of these pages would show up in the artist's access log as a phantom view,
+ *   and following a download link would spend a presigned URL.
  *
  * The one carve-out is `/api/media/file/`, which is where uploads are served
  * from when `S3_CDN_URL` is unset. Those URLs are the page images and the
@@ -43,7 +48,7 @@ const robots = (): MetadataRoute.Robots => {
   return {
     rules: {
       allow: ['/', '/api/media/file/'],
-      disallow: ['/admin', '/api/', '/invoice/'],
+      disallow: ['/admin', '/api/', '/commission/', '/invoice/'],
       userAgent: '*',
     },
     // Absolute or omitted: the directive takes a full URL, and a crawler that

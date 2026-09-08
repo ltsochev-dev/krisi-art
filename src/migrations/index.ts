@@ -13,6 +13,7 @@ import * as migration_20260827_071502_invoicing from './20260827_071502_invoicin
 import * as migration_20260827_075943_invoice_language from './20260827_075943_invoice_language'
 import * as migration_20260827_080440_invoice_legal_note_en from './20260827_080440_invoice_legal_note_en'
 import * as migration_20260904_132850_media_alt_optional from './20260904_132850_media_alt_optional'
+import * as migration_20260908_075813_commissions from './20260908_075813_commissions'
 
 export const migrations = [
   {
@@ -89,5 +90,10 @@ export const migrations = [
     up: migration_20260904_132850_media_alt_optional.up,
     down: migration_20260904_132850_media_alt_optional.down,
     name: '20260904_132850_media_alt_optional',
+  },
+  {
+    up: migration_20260908_075813_commissions.up,
+    down: migration_20260908_075813_commissions.down,
+    name: '20260908_075813_commissions',
   },
 ]
