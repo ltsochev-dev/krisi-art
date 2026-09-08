@@ -44,7 +44,12 @@ import {
   logCommissionAccess,
   VIEW_DEDUPE_WINDOW_MS,
 } from '@/lib/commissions/access-log'
-import { buildCommissionKey, isKeyForCommission, sanitiseFilename } from '@/lib/commissions/keys'
+import {
+  buildCommissionKey,
+  downloadFilename,
+  isKeyForCommission,
+  sanitiseFilename,
+} from '@/lib/commissions/keys'
 import { verifyPassword } from '@/lib/commissions/password'
 import {
   contentDispositionAttachment,
@@ -161,6 +166,72 @@ describe('commissions', () => {
   })
 
   // --- Pure functions ------------------------------------------------------
+
+  describe('download filenames', () => {
+    it('gives a label the extension of the file it labels', () => {
+      // The bug this covers: a label is free text, so an artist who typed
+      // "Final version" as a note on a JPEG handed the client an extensionless
+      // file that nothing would open until it was renamed by hand.
+      expect(downloadFilename({ filename: 'IMG_4821.jpg', label: 'Final version' })).toBe(
+        'Final version.jpg',
+      )
+    })
+
+    it('does not double an extension the label already carries', () => {
+      expect(downloadFilename({ filename: 'IMG_4821.jpg', label: 'Final version.jpg' })).toBe(
+        'Final version.jpg',
+      )
+      // Case is not part of the comparison: the object is what it is.
+      expect(downloadFilename({ filename: 'IMG_4821.JPG', label: 'Final version.jpg' })).toBe(
+        'Final version.jpg',
+      )
+    })
+
+    it('appends the real extension to a label that claims a different one', () => {
+      // Ugly on purpose. A name that lies about the bytes is worse than a name
+      // with two suffixes.
+      expect(downloadFilename({ filename: 'scan.tif', label: 'cover.jpeg' })).toBe('cover.jpeg.tif')
+    })
+
+    it('falls back to the uploaded filename when there is no label', () => {
+      expect(downloadFilename({ filename: 'IMG_4821.jpg', label: null })).toBe('IMG_4821.jpg')
+      expect(downloadFilename({ filename: 'IMG_4821.jpg', label: '   ' })).toBe('IMG_4821.jpg')
+      expect(downloadFilename({ filename: 'IMG_4821.jpg' })).toBe('IMG_4821.jpg')
+      // A label of nothing but dots sanitises away, and the filename stands in
+      // rather than the `file` placeholder.
+      expect(downloadFilename({ filename: 'IMG_4821.jpg', label: '...' })).toBe('IMG_4821.jpg')
+    })
+
+    it('joins across the trailing dot Windows would drop', () => {
+      expect(downloadFilename({ filename: 'IMG_4821.jpg', label: 'Final render.' })).toBe(
+        'Final render.jpg',
+      )
+    })
+
+    it('leaves the name extensionless when the upload had no extension', () => {
+      // There is nothing to restore, so this is no worse than it was before
+      // labels existed.
+      expect(downloadFilename({ filename: 'render', label: 'Final version' })).toBe('Final version')
+    })
+
+    it('sanitises a label as strictly as an uploaded filename', () => {
+      // The result is signed into a `Content-Disposition` header, so a label
+      // may not smuggle separators or control characters into it.
+      expect(downloadFilename({ filename: 'final.zip', label: '../../etc/passwd' })).toBe(
+        'etcpasswd.zip',
+      )
+      expect(downloadFilename({ filename: 'final.zip', label: 'Портрет на Мария' })).toBe(
+        'Портрет на Мария.zip',
+      )
+    })
+
+    it('keeps the extension when a very long label is truncated', () => {
+      const safe = downloadFilename({ filename: 'final.zip', label: 'a'.repeat(300) })
+
+      expect(safe.endsWith('.zip')).toBe(true)
+      expect(safe.length).toBe(120)
+    })
+  })
 
   describe('object keys', () => {
     const uuid = '11111111-2222-3333-4444-555555555555'
@@ -375,9 +446,7 @@ describe('commissions', () => {
 
     it('takes the left-most entry of a forwarded chain', () => {
       expect(
-        getClientIp(
-          new Headers({ 'x-forwarded-for': '203.0.113.7, 70.41.3.18, 150.172.238.178' }),
-        ),
+        getClientIp(new Headers({ 'x-forwarded-for': '203.0.113.7, 70.41.3.18, 150.172.238.178' })),
       ).toBe('203.0.113.7')
     })
 

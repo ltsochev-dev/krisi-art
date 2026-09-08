@@ -27,6 +27,22 @@ const FALLBACK_FILENAME = 'file'
 /** ASCII control characters, including DEL. */
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/g
 
+/** Longest trailing dot group still treated as an extension. */
+const MAX_EXTENSION_LENGTH = 12
+
+/**
+ * The extension of a filename, leading dot included, or `''` when it has none.
+ *
+ * Only a trailing dot group that *looks* like an extension counts — a dot in
+ * the middle of a 300-character sentence is not one, and neither is the dot of
+ * a dotfile, which is why the index has to be past the first character.
+ */
+const extensionOf = (filename: string): string => {
+  const dot = filename.lastIndexOf('.')
+
+  return dot > 0 && filename.length - dot <= MAX_EXTENSION_LENGTH ? filename.slice(dot) : ''
+}
+
 /**
  * Makes an uploaded filename safe to put in a key.
  *
@@ -61,10 +77,7 @@ export const sanitiseFilename = (input: string): string => {
     return stripped
   }
 
-  const dot = stripped.lastIndexOf('.')
-  // Only treat a trailing dot group as an extension when it looks like one — a
-  // dot in the middle of a 300-character sentence is not.
-  const extension = dot > 0 && stripped.length - dot <= 12 ? stripped.slice(dot) : ''
+  const extension = extensionOf(stripped)
 
   return stripped.slice(0, MAX_FILENAME_LENGTH - extension.length) + extension
 }
@@ -102,4 +115,50 @@ export const isKeyForCommission = (key: string, commissionUuid: string): boolean
     Boolean(segments[1]) &&
     Boolean(segments[2])
   )
+}
+
+/**
+ * The name a delivered file is saved under on the client's machine.
+ *
+ * `label` is a friendlier name than `IMG_4821_final_v3.tif`, so it wins — but
+ * it is free text the artist types into the uploader, and a name with no
+ * extension arrives as a file the client's OS cannot open without renaming it
+ * by hand. So the label supplies the base name and the *uploaded* filename
+ * supplies the extension, which is the only one that matches the bytes in the
+ * bucket.
+ *
+ * A label that already ends in the real extension is left alone rather than
+ * doubled. A label ending in some *other* extension keeps it and gains the real
+ * one (`cover.jpeg` on a TIFF becomes `cover.jpeg.tif`): mildly ugly, and
+ * preferable to handing over a file whose name lies about its contents.
+ *
+ * When the upload itself had no extension there is none to restore, and the
+ * name comes back extensionless — the same as it would have before labels
+ * existed.
+ */
+export const downloadFilename = ({
+  filename,
+  label,
+}: {
+  filename: string
+  label?: null | string
+}): string => {
+  // Trailing dots and spaces are dropped by Windows when it writes the file, so
+  // `Final render.` would otherwise become `Final render` and lose the join.
+  const base = label
+    ?.trim()
+    .replace(/[.\s]+$/, '')
+    .trim()
+
+  if (!base) {
+    return sanitiseFilename(filename)
+  }
+
+  const extension = extensionOf(filename)
+
+  if (!extension || base.toLowerCase().endsWith(extension.toLowerCase())) {
+    return sanitiseFilename(base)
+  }
+
+  return sanitiseFilename(base + extension)
 }

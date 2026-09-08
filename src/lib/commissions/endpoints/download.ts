@@ -17,6 +17,7 @@ import { getCommissionsBucket, getPresignedDownloadUrl } from '@/lib/aws/s3'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { logCommissionAccess } from '@/lib/commissions/access-log'
 import { DOWNLOAD_URL_TTL_SECONDS } from '@/lib/commissions/constants'
+import { downloadFilename } from '@/lib/commissions/keys'
 import { unlockCookieName, verifyUnlockToken } from '@/lib/commissions/password'
 import { contentDispositionAttachment, getClientIp, readCookie } from '@/lib/commissions/request'
 import { evaluateCommissionGate, findCommissionRecordByUuid } from '@/lib/content/commissions'
@@ -113,7 +114,13 @@ export const downloadCommissionFileEndpoint: Endpoint = {
       return publicNotFound()
     }
 
-    const name = file.label?.trim() || file.filename
+    /**
+     * The label, when there is one, but never at the cost of the extension —
+     * see `downloadFilename`. A label is free text, so `Final version` on a
+     * JPEG used to arrive as an extensionless file the client had to rename
+     * before anything would open it.
+     */
+    const name = downloadFilename({ filename: file.filename, label: file.label })
 
     const url = await getPresignedDownloadUrl({
       // Explicit, never the helper's default — that one is the media bucket,
