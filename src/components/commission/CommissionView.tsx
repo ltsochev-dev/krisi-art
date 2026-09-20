@@ -41,13 +41,21 @@ const FILES_NOTE =
   'Each download link is generated for you and expires within a few minutes. Come back to this page whenever you need the files again.'
 
 /**
- * The gallery's version of the same warning. Saving a photo straight out of the
- * page works and is the obvious thing to do, so the note is about the album
- * rather than about the links — the images behind it expire too, but a reload
- * silently mints new ones, so a visitor never meets that.
+ * The gallery's version of the same warning, and it says something different
+ * from what it used to.
+ *
+ * The grid draws resized copies now (see `@/components/commission/CommissionGallery`),
+ * so right-clicking a tile saves a few kilobytes of preview rather than the
+ * photograph. That is the right trade for a page that has to open at all on a
+ * phone, but it would be a nasty surprise to find out afterwards — hence the
+ * sentence pointing at the viewer, where the original is what is on screen and
+ * Download original is what saves it.
+ *
+ * Nothing is said about the links expiring: they do, but a reload silently mints
+ * new ones, so a visitor never meets it.
  */
 const GALLERY_NOTE =
-  'Right-click or long-press any photo to save it, or open one and use Download original for the full-size file. This page is private — only people with the link can see it.'
+  'Open a photo to see it full size, then use Download original to save it — the small pictures in the grid are previews, not the full-resolution files. This page is private: only people with the link can see it.'
 
 export default async function CommissionView({
   commission,

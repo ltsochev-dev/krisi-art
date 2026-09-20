@@ -5,15 +5,21 @@
  * download, and the differences from `./endpoints/download` are all deliberate:
  *
  * - **The URLs are signed during the page render**, not fetched per click. A
- *   grid of forty pictures cannot make forty round trips to an endpoint before
- *   it can paint, and signing is a local HMAC — no network, no S3 call — so
- *   doing it inline costs nothing worth measuring.
+ *   grid of a hundred and fifty pictures cannot make a hundred and fifty round
+ *   trips to an endpoint before it can paint, and signing is a local HMAC — no
+ *   network, no S3 call — so doing it inline costs nothing worth measuring.
  * - **They are `inline`**, so the browser paints the image instead of saving it.
  * - **They are pinned to a time window**, so the same photo gets the same URL
- *   across page loads and the browser cache can actually hold it. See
- *   `GALLERY_URL_WINDOW_SECONDS` — this matters more here than anywhere else in
- *   the app, because a gallery commission serves the artist's original uploads
- *   with no resized derivatives behind them.
+ *   across page loads — which is what lets the browser cache hold a photograph
+ *   and, more importantly, what lets this app's image optimiser hold the resized
+ *   copy it made from one. See `GALLERY_URL_WINDOW_SECONDS`.
+ *
+ * What these URLs address is always the **original**, at whatever size it came
+ * off the camera; there are no resized objects in the bucket and nothing here
+ * writes one. The grid gets its small copies by handing these URLs to
+ * `next/image`, which resizes on the way past and caches the result on disk —
+ * see `@/components/commission/CommissionGallery`. That is why the change cost
+ * nothing at the storage layer and applies to albums uploaded long before it.
  *
  * What has *not* changed is the part that matters: these are still presigned
  * URLs against a bucket with public access blocked and no CDN. A signed URL is
@@ -22,8 +28,10 @@
  *
  * Note the consequence of inline URLs for the access log: a visitor who
  * right-clicks and saves a photo is reading a URL the page already handed them,
- * so it is not recorded as a download. The lightbox's own download button goes
- * through the endpoint and is. That is the honest trade for a page whose whole
+ * so it is not recorded as a download. (Out of the grid they now save the
+ * optimiser's small copy rather than the photograph, which is what the page's
+ * footnote warns about.) The viewer's own download button goes through the
+ * endpoint and is recorded. That is the honest trade for a page whose whole
  * job is showing pictures, and it is why the view counter, not the download
  * counter, is the meaningful number on a gallery.
  */

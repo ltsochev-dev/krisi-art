@@ -44,7 +44,7 @@ import {
   logCommissionAccess,
   VIEW_DEDUPE_WINDOW_MS,
 } from '@/lib/commissions/access-log'
-import { isDisplayableImage } from '@/lib/commissions/constants'
+import { GALLERY_URL_WINDOW_SECONDS, isDisplayableImage } from '@/lib/commissions/constants'
 import { buildCommissionGallery, galleryWindowStart } from '@/lib/commissions/gallery'
 import {
   buildCommissionKey,
@@ -1292,6 +1292,42 @@ describe('commissions', () => {
       expect(early.toISOString()).toBe('2026-09-20T09:00:00.000Z')
       expect(late.toISOString()).toBe(early.toISOString())
       expect(next.toISOString()).toBe('2026-09-20T12:00:00.000Z')
+    })
+
+    it('signs gallery URLs against a long window, overridable and clamped', () => {
+      const original = process.env.COMMISSION_GALLERY_WINDOW_SECONDS
+
+      try {
+        delete process.env.COMMISSION_GALLERY_WINDOW_SECONDS
+
+        /**
+         * Twelve hours, and the length is load-bearing rather than a taste: the
+         * grid draws its tiles through `next/image`, whose optimiser caches on
+         * the `src` it was handed, so every rotation of this window throws away
+         * the resized copies of every photo in the album and makes the server
+         * fetch and re-encode the originals again.
+         */
+        expect(GALLERY_URL_WINDOW_SECONDS()).toBe(12 * 60 * 60)
+
+        process.env.COMMISSION_GALLERY_WINDOW_SECONDS = '600'
+        expect(GALLERY_URL_WINDOW_SECONDS()).toBe(600)
+
+        // Clamped: the URLs are signed to last two windows and SigV4 refuses an
+        // expiry beyond seven days, so an over-long override would turn every
+        // gallery into a signing error rather than a long-lived link.
+        process.env.COMMISSION_GALLERY_WINDOW_SECONDS = String(30 * 24 * 60 * 60)
+        expect(GALLERY_URL_WINDOW_SECONDS()).toBe(3 * 24 * 60 * 60)
+
+        // Anything unusable falls back to the default rather than to zero.
+        process.env.COMMISSION_GALLERY_WINDOW_SECONDS = 'soon'
+        expect(GALLERY_URL_WINDOW_SECONDS()).toBe(12 * 60 * 60)
+      } finally {
+        if (original === undefined) {
+          delete process.env.COMMISSION_GALLERY_WINDOW_SECONDS
+        } else {
+          process.env.COMMISSION_GALLERY_WINDOW_SECONDS = original
+        }
+      }
     })
 
     it('falls back to a plain file list when no bucket is configured', async () => {

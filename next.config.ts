@@ -37,6 +37,54 @@ const cdnHostnames = [
   ...new Set([PRODUCTION_CDN_HOSTNAME, cdnHostname].filter(Boolean)),
 ] as string[]
 
+/**
+ * The private commissions bucket, hardcoded for exactly the reason the CDN host
+ * above is: `images` is frozen into `.next/required-server-files.json` at build
+ * time, so a value that only exists in the container's runtime `.env` never
+ * becomes an allowed pattern.
+ *
+ * A gallery commission draws its grid with `next/image` — see
+ * `@/components/commission/CommissionGallery` — so every tile is a
+ * `/_next/image?url=https://<this host>/...` request. Without this entry each
+ * one 400s with `"url" parameter is not allowed` and the album renders as a grid
+ * of broken images.
+ */
+const PRODUCTION_COMMISSIONS_HOSTNAME = 'krisi-commission-files.s3.eu-west-2.amazonaws.com'
+
+/**
+ * The same host worked out from the environment, for any other checkout.
+ *
+ * Mirrors how `@/lib/aws/s3` addresses the bucket: virtual-host style against
+ * real S3, and the endpoint's own host for an S3-compatible provider (MinIO,
+ * R2, Spaces), where path-style keeps the bucket in the path and virtual-host
+ * style puts it in front of the endpoint.
+ */
+const commissionsHostname = (() => {
+  const bucket = process.env.S3_COMMISSIONS_BUCKET?.trim()
+  const region = process.env.S3_REGION?.trim()
+  const endpoint = process.env.S3_ENDPOINT?.trim()
+
+  if (!bucket) {
+    return undefined
+  }
+
+  if (!endpoint) {
+    return region ? `${bucket}.s3.${region}.amazonaws.com` : undefined
+  }
+
+  try {
+    const { hostname } = new URL(endpoint.includes('://') ? endpoint : `https://${endpoint}`)
+
+    return process.env.S3_FORCE_PATH_STYLE === 'true' ? hostname : `${bucket}.${hostname}`
+  } catch {
+    return undefined
+  }
+})()
+
+const commissionsHostnames = [
+  ...new Set([PRODUCTION_COMMISSIONS_HOSTNAME, commissionsHostname].filter(Boolean)),
+] as string[]
+
 const nextConfig: NextConfig = {
   output: 'standalone',
   // `X-Powered-By: Next.js` only tells a scanner which framework to try CVEs
@@ -50,14 +98,44 @@ const nextConfig: NextConfig = {
         pathname: '/api/media/file/**',
       },
     ],
-    // With a CDN configured, `next/image` call sites (the about collage, the
-    // hero) receive CloudFront URLs and would otherwise be rejected as an
-    // unconfigured host.
-    remotePatterns: cdnHostnames.map((hostname) => ({
-      protocol: 'https' as const,
-      hostname,
-      pathname: '/**',
-    })),
+    /**
+     * Optimised copies are held for a day rather than the default four hours.
+     *
+     * A commission gallery's `src` is a presigned URL pinned to a signing
+     * window (`GALLERY_URL_WINDOW_SECONDS`), and the optimiser caches on the
+     * `src` it was given — so a cache entry is useful right up until the window
+     * rotates and the URL changes. Expiring sooner than that would have this
+     * server re-downloading and re-encoding an album of 150 originals several
+     * times inside one window, which is the work this whole arrangement exists
+     * to do once.
+     */
+    minimumCacheTTL: 86_400,
+    remotePatterns: [
+      // With a CDN configured, `next/image` call sites (the about collage, the
+      // hero) receive CloudFront URLs and would otherwise be rejected as an
+      // unconfigured host.
+      ...cdnHostnames.map((hostname) => ({
+        protocol: 'https' as const,
+        hostname,
+        pathname: '/**',
+      })),
+      /**
+       * The commission galleries.
+       *
+       * **`search` is deliberately omitted, which allows any query string** —
+       * and a presigned URL is *entirely* query string, so pinning one here
+       * would reject every image. That is not a hole: the bucket has public
+       * access blocked, so a URL under this host is worthless without a valid
+       * SigV4 signature, which only this server can mint. Anyone holding one
+       * already has the object and does not need the optimiser to fetch it for
+       * them.
+       */
+      ...commissionsHostnames.map((hostname) => ({
+        protocol: 'https' as const,
+        hostname,
+        pathname: '/**',
+      })),
+    ],
   },
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {

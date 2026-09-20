@@ -163,11 +163,27 @@ navigations rather than XHR and need no rule. The current origins and the fact
 that `put-bucket-cors` replaces the whole configuration instead of merging are
 in the infra doc.
 
+**A gallery commission's grid goes through `next/image`.** The tiles are
+`/_next/image` requests pointing at the presigned URL of the original, so this
+server fetches each photograph from S3 once, resizes it to tile size and caches
+the result on disk — a five-megabyte JPEG becomes an eighteen-kilobyte WebP, and
+an album of 150 of them stops being a gigabyte of downloads and 150
+full-resolution decodes in the visitor's browser. Nothing is stored in the
+bucket and no document changed, so it applies to albums uploaded long before it.
+Two consequences worth knowing: **`next.config.ts` must list the commissions
+bucket's host under `images.remotePatterns`** (it is hardcoded there for the same
+build-time reason the CDN host is, and without it every tile 400s), and opening a
+photo still serves the untouched original, which is what the page's footnote
+tells the visitor.
+
 **Presigned lifetimes** default to 300 seconds for downloads — the URL is handed
 to the browser as JSON and navigated to at once, so it only has to survive one
 click — and 900 seconds for uploads, which is a whole `PUT` on a slow
 connection. Override with `COMMISSION_DOWNLOAD_TTL_SECONDS` and
-`COMMISSION_UPLOAD_TTL_SECONDS`.
+`COMMISSION_UPLOAD_TTL_SECONDS`. A gallery's image URLs are the exception: they
+are signed against a rolling 12-hour window (`COMMISSION_GALLERY_WINDOW_SECONDS`)
+so that every render inside one produces byte-identical URLs, which is what lets
+both the browser and the image optimiser cache what they made from them.
 
 **Views and downloads are logged locally**, in the `commission-access-log`
 collection, and shown on the commission document. No analytics service is

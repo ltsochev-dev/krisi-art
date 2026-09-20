@@ -87,15 +87,26 @@ export const isAllowedCommissionMimeType = (value: unknown): value is string =>
  * open over lunch must still show pictures when it comes back.
  *
  * It is a **window** rather than a plain TTL because the signature is pinned to
- * the start of it (see `signedViewUrl`). Within one window every render of the
- * page produces byte-identical URLs, so a visitor's browser cache actually hits
- * on the second visit — which matters a great deal here, since gallery images
- * are served as the originals the artist uploaded with no derivatives behind
- * them. A URL freshly signed per request would re-download every photo on every
- * page load.
+ * the start of it (see `galleryWindowStart`). Within one window every render of
+ * the page produces byte-identical URLs, and two things downstream depend on
+ * that:
+ *
+ * - a visitor's browser cache hits on the second visit rather than re-fetching
+ *   every photograph;
+ * - **this app's image optimiser caches on the `src` it was given.** The grid
+ *   draws its tiles through `next/image`, so a URL that changed per request
+ *   would have the server re-download and re-encode 150 originals on every page
+ *   load — the exact work the optimiser exists to do once.
+ *
+ * Twelve hours, rather than the three this shipped with, for the second reason:
+ * the optimised copies survive only until the URL under them rotates, so a short
+ * window is a standing bill in S3 egress and CPU for no benefit to anyone.
+ * The cost of the longer one is that a signed URL that leaks — out of a shared
+ * screen, a browser history — stays good for a day rather than a quarter of one,
+ * on a page whose protection is an unguessable link to begin with.
  *
  * The URLs are signed to live for *two* windows, so one minted at the very end
- * of a window is still good for an hour afterwards rather than expiring in the
+ * of a window is still good for a window afterwards rather than expiring in the
  * visitor's hands.
  */
 export const GALLERY_URL_WINDOW_SECONDS = (): number =>
@@ -103,7 +114,7 @@ export const GALLERY_URL_WINDOW_SECONDS = (): number =>
   // an expiry beyond seven days — an override of, say, a fortnight would
   // otherwise turn every gallery into a signing error rather than a long-lived
   // link.
-  Math.min(seconds('COMMISSION_GALLERY_WINDOW_SECONDS', 3 * 60 * 60), 3 * 24 * 60 * 60)
+  Math.min(seconds('COMMISSION_GALLERY_WINDOW_SECONDS', 12 * 60 * 60), 3 * 24 * 60 * 60)
 
 /**
  * What a browser will actually paint from a presigned URL.

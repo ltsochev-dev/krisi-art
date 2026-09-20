@@ -16,19 +16,65 @@
  * paint without a round trip per photo and why nothing here asks the server for
  * anything until someone presses Download.
  *
- * **The images are the artist's originals**, at whatever size they came off the
- * camera — there are no resized derivatives in the private bucket. Hence
- * `loading="lazy"` on the grid, so a forty-photo album fetches what is on screen
- * and not the rest, and hence the viewer rendering the same object rather than a
- * larger one: there is no larger one.
+ * **The grid draws resized copies; the viewer draws the original.** The first
+ * version of this did neither: every tile was the artist's full-resolution
+ * upload, scaled down by the browser. An album of 150 twenty-megapixel
+ * photographs is gigabytes over the wire and 150 full-resolution decodes into
+ * the compositor, which is enough to bring a sixteen-core desktop to its knees —
+ * a browser has no way to know that the 6000px image it is decoding is about to
+ * be painted into a 150px box.
+ *
+ * So the tiles go through `next/image`, which points them at this app's image
+ * optimiser: it fetches each original from S3 *once*, server-side, and serves a
+ * few-kilobyte WebP at the size the tile actually occupies, cached on disk
+ * afterwards. The originals are untouched in the bucket and unchanged on the
+ * document — nothing was re-uploaded and no derivative is stored — which is what
+ * makes this work on an album that was uploaded and shared long before it.
+ * `next.config.ts` carries the `remotePatterns` entry that authorises the
+ * bucket's host, without which every tile 400s.
+ *
+ * Opening a photo still shows the original, at whatever size it came off the
+ * camera. It arrives over the small copy the grid already loaded, so the viewer
+ * has something sharp-ish on screen immediately instead of a black rectangle for
+ * as long as a 15MB JPEG takes.
  */
 import React, { useCallback, useEffect, useState } from 'react'
+
+import Image from 'next/image'
 
 import type { CommissionGalleryImage } from '@/lib/commissions/gallery'
 
 import { formatSize } from './CommissionFiles'
 import { useCommissionDownload } from './useCommissionDownload'
 import { useCommissionView } from './useCommissionView'
+
+/**
+ * The size the optimiser is asked for, and the one number that decides how much
+ * work this page is.
+ *
+ * It describes the *tile*: the grid is `repeat(auto-fill, minmax(9rem, 1fr))`
+ * inside a 68rem column, so a tile is around 150px on a wide monitor and about
+ * half the viewport on a phone. Next rounds this up to its own size list and
+ * emits two candidates, 256px for an ordinary display and 384px for a retina
+ * one — twenty kilobytes or so per photograph, against the five megabytes the
+ * original weighs.
+ *
+ * **Given as `width`/`height` rather than as `sizes`, and that is not a
+ * stylistic choice.** A `sizes` string makes `next/image` emit a `w`-descriptor
+ * srcset with every candidate width it knows — nine URLs, each carrying a whole
+ * presigned URL of some seven hundred characters, per photograph. On an album of
+ * 150 that is megabytes of markup before a single image is fetched, which is the
+ * problem this change exists to solve rather than a cost to pay towards it. Two
+ * `x`-descriptor candidates say the same thing about a fixed-size tile.
+ *
+ * The numbers are not the photograph's aspect ratio — a commission row stores
+ * no dimensions, and the artist's uploads are portrait and landscape both. They
+ * are the tile's, which is a square; the stylesheet gives the image both of its
+ * dimensions and crops with `object-fit: cover`, so the intrinsic ratio decides
+ * nothing here. The optimiser keeps each photo's real ratio in the file it
+ * returns.
+ */
+const TILE_PIXELS = 192
 
 export default function CommissionGallery({
   images,
@@ -38,6 +84,13 @@ export default function CommissionGallery({
   uuid: string
 }) {
   const [index, setIndex] = useState<null | number>(null)
+  /**
+   * The `fileId` of the original that has finished loading, so the viewer knows
+   * when to fade it in over the placeholder. Held as an id rather than a boolean
+   * so that arrowing to the next photo is self-resetting: a different photo is
+   * simply not the one that loaded.
+   */
+  const [loadedId, setLoadedId] = useState<null | string>(null)
   const { download, errors, pendingFileId } = useCommissionDownload(uuid)
 
   useCommissionView(uuid)
@@ -103,13 +156,15 @@ export default function CommissionGallery({
               onClick={() => setIndex(position)}
               type="button"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              {/* Lazy by default, which is what `next/image` does unless told
+                  otherwise: an album of 150 photographs fetches the screenful
+                  someone is actually looking at. */}
+              <Image
                 alt={photo.name}
                 className="gallery__image"
-                decoding="async"
-                loading="lazy"
+                height={TILE_PIXELS}
                 src={photo.url}
+                width={TILE_PIXELS}
               />
             </button>
           </li>
@@ -163,8 +218,49 @@ export default function CommissionGallery({
           {/* Clicking the backdrop closes; the figure stops propagation so
               clicking the photo itself does not. */}
           <figure className="viewer__figure" onClick={(event) => event.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img alt={image.name} className="viewer__image" src={image.url} />
+            <div className="viewer__frame">
+              {/*
+               * The placeholder, and deliberately the *same* request the grid
+               * has already made: identical `src` and identical dimensions, so
+               * the browser serves it from cache and the viewer has something on
+               * screen in the frame the click happened in. Asking for a larger
+               * one here would be a fresh download and a fresh optimisation to
+               * cover a gap measured in hundreds of milliseconds.
+               *
+               * Stretched far past its own size, which is exactly what a
+               * placeholder is: soft for the moment it takes the original to
+               * arrive over the top of it.
+               *
+               * It is not the photograph as far as assistive technology is
+               * concerned — the original below carries the name.
+               */}
+              <Image
+                alt=""
+                aria-hidden="true"
+                className="viewer__preview"
+                height={TILE_PIXELS}
+                src={image.url}
+                width={TILE_PIXELS}
+              />
+
+              {/*
+               * The original, straight from the signed URL — no optimiser, no
+               * resizing, the file the artist uploaded. It fades in over the
+               * placeholder once the browser has it.
+               *
+               * A plain `img`, because `next/image` exists to *not* do this.
+               */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt={image.name}
+                className="viewer__image"
+                data-loaded={loadedId === image.fileId ? 'true' : undefined}
+                decoding="async"
+                key={image.fileId}
+                onLoad={() => setLoadedId(image.fileId)}
+                src={image.url}
+              />
+            </div>
 
             <figcaption className="viewer__caption">
               <span className="viewer__name">{image.name}</span>
