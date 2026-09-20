@@ -635,7 +635,7 @@ export interface Invoice {
   createdAt: string;
 }
 /**
- * Private file delivery. Upload the files, tick Enabled, then send the client the public link from the sidebar. Every view and download is recorded below.
+ * Private file delivery and private photo albums. Upload the files, pick a presentation, tick Enabled, then send the link from the sidebar. Every view and download is recorded on the document.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "commissions".
@@ -684,6 +684,14 @@ export interface Commission {
     hasNextPage?: boolean;
     totalDocs?: number;
   };
+  /**
+   * How the page draws itself. A photo gallery shows the images as a grid with a full-screen viewer; anything a browser cannot display is listed underneath as a download.
+   */
+  layout?: ('files' | 'gallery') | null;
+  /**
+   * Optional. Gives this a friendly address: “prague-2026” becomes /album/prague-2026. Lowercase letters, numbers and hyphens. Easy to share and therefore easy to guess — add a password if that matters. The UUID link below keeps working either way.
+   */
+  slug?: string | null;
   /**
    * Until this is ticked the public link returns “not available”.
    */
@@ -1165,6 +1173,8 @@ export interface CommissionsSelect<T extends boolean = true> {
       };
   internalNotes?: T;
   accessLog?: T;
+  layout?: T;
+  slug?: T;
   enabled?: T;
   expiresAt?: T;
   password?: T;

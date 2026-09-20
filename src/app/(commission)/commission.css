@@ -230,6 +230,141 @@ body {
   margin: 0;
 }
 
+/* --- The photo gallery --------------------------------------------------- */
+
+/* A gallery wants the room a file list does not: the reading-width column that
+   suits a dozen download rows would stack the grid two tiles across on a
+   laptop. */
+.page--wide {
+  max-width: 68rem;
+}
+
+.gallery {
+  display: grid;
+  gap: 0.5rem;
+  /* `auto-fill` rather than a breakpoint per screen size: the tile count falls
+     out of the available width, so a phone gets two and a wide monitor gets
+     seven with no media query in between. */
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+}
+
+.gallery__item {
+  /* Square tiles, so an album of mixed portrait and landscape reads as a grid
+     rather than as a ragged column. The photo itself is never cropped in the
+     viewer — only here. */
+  aspect-ratio: 1;
+  background: var(--desk);
+  border: 0;
+  border-radius: 0.5rem;
+  cursor: zoom-in;
+  display: block;
+  overflow: hidden;
+  padding: 0;
+  width: 100%;
+}
+
+.gallery__image {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.gallery__item:hover .gallery__image {
+  opacity: 0.85;
+}
+
+.gallery__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- The full-screen viewer ---------------------------------------------- */
+
+/* Dark, unlike every other surface here. The page is a sheet of paper because a
+   client is reading it; the viewer is a room with the lights off because someone
+   is looking at a photograph. */
+.viewer {
+  align-items: center;
+  background: rgba(12, 12, 16, 0.94);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 10;
+}
+
+.viewer__figure {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  max-height: 100%;
+  max-width: 100%;
+}
+
+.viewer__image {
+  border-radius: 0.5rem;
+  max-height: 75vh;
+  max-width: 100%;
+  object-fit: contain;
+  width: auto;
+}
+
+.viewer__caption {
+  align-items: center;
+  color: #f4f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.viewer__name {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.viewer__meta {
+  color: #9b9ba6;
+  font-size: 0.8125rem;
+}
+
+.viewer__control {
+  background: rgba(244, 244, 246, 0.12);
+  border: 0;
+  border-radius: 999px;
+  color: #f4f4f6;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.5rem 0.75rem;
+  position: absolute;
+}
+
+.viewer__control:hover {
+  background: rgba(244, 244, 246, 0.24);
+}
+
+.viewer__close {
+  right: 1rem;
+  top: 1rem;
+}
+
+.viewer__previous {
+  left: 0.75rem;
+}
+
+.viewer__next {
+  right: 0.75rem;
+}
+
 /* --- Narrow screens ----------------------------------------------------- */
 
 @media screen and (max-width: 30rem) {
@@ -246,5 +381,17 @@ body {
 
   .button {
     width: 100%;
+  }
+
+  /* Two tiles across on a phone rather than one, so an album is scannable by
+     scrolling rather than by scrolling a very long way. */
+  .gallery {
+    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  }
+
+  /* The caption's download button is the exception to the full-width rule
+     above: it sits under a photo, not in a row. */
+  .viewer__caption .button {
+    width: auto;
   }
 }

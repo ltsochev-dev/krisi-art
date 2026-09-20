@@ -3,6 +3,12 @@ import type { CollectionConfig } from 'payload'
 import { admins, editors } from '@/lib/auth/access'
 import { commissionEndpoints } from '@/lib/commissions/endpoints'
 import {
+  commissionPath,
+  isValidCommissionSlug,
+  MAX_COMMISSION_SLUG_LENGTH,
+  normaliseCommissionSlug,
+} from '@/lib/commissions/routes'
+import {
   deleteCommissionAccessLog,
   deleteCommissionObjects,
   prepareCommission,
@@ -10,13 +16,27 @@ import {
 import { getSiteUrl } from '@/lib/seo/metadata'
 
 /**
- * Commissions — private file delivery.
+ * Commissions — private file delivery, and private photo albums.
  *
- * A commission is a set of finished files plus one shareable link,
- * `/commission/<uuid>`. The files live in a dedicated bucket with public access
- * blocked and no CDN in front of it, so a short-lived presigned URL is the only
- * way to read a byte of one. See `@/lib/commissions/keys` for why that is a
- * property of the infrastructure rather than of a code path.
+ * A commission is a set of files plus one shareable link. The files live in a
+ * dedicated bucket with public access blocked and no CDN in front of it, so a
+ * presigned URL is the only way to read a byte of one. See
+ * `@/lib/commissions/keys` for why that is a property of the infrastructure
+ * rather than of a code path.
+ *
+ * Two fields decide how a commission presents itself, and neither touches
+ * access control:
+ *
+ * - **`layout`** — a download list (a client collecting finished work) or a
+ *   photo grid (an album shared with friends). Same document, same bucket, same
+ *   gate; only the page differs.
+ * - **`slug`** — an optional vanity address, `/album/<slug>`, in place of
+ *   `/commission/<uuid>`. Easier to share and correspondingly easier to guess;
+ *   `@/lib/commissions/routes` is where that trade is written down.
+ *
+ * Nothing on this collection is reachable from the sitemap, the gallery index
+ * or any link on the site, whichever of the two it is. `robots.ts` disallows
+ * both routes and the layout sends `noindex`.
  *
  * Three things about this file worth knowing before changing it.
  *
@@ -46,9 +66,9 @@ export const Commissions: CollectionConfig = {
     update: editors,
   },
   admin: {
-    defaultColumns: ['title', 'enabled', 'viewCount', 'downloadCount', 'lastAccessedAt'],
+    defaultColumns: ['title', 'layout', 'slug', 'enabled', 'viewCount', 'lastAccessedAt'],
     description:
-      'Private file delivery. Upload the files, tick Enabled, then send the client the public link from the sidebar. Every view and download is recorded below.',
+      'Private file delivery and private photo albums. Upload the files, pick a presentation, tick Enabled, then send the link from the sidebar. Every view and download is recorded on the document.',
     group: 'Commissions',
     useAsTitle: 'title',
   },
@@ -172,6 +192,69 @@ export const Commissions: CollectionConfig = {
       defaultSort: '-createdAt',
       label: 'Access log',
       on: 'commission',
+    },
+    {
+      /**
+       * What the public page looks like. Nothing about *access* varies with it
+       * — same bucket, same link, same optional password — so it is a
+       * presentation switch and nothing more.
+       *
+       * `files` stays the default because that is what a commission is for. The
+       * gallery is the same machinery pointed at a different job: a set of
+       * photographs shared with people who want to look at them rather than
+       * collect them.
+       */
+      name: 'layout',
+      type: 'select',
+      admin: {
+        description:
+          'How the page draws itself. A photo gallery shows the images as a grid with a full-screen viewer; anything a browser cannot display is listed underneath as a download.',
+        position: 'sidebar',
+      },
+      defaultValue: 'files',
+      label: 'Presentation',
+      options: [
+        { label: 'File list', value: 'files' },
+        { label: 'Photo gallery', value: 'gallery' },
+      ],
+    },
+    {
+      /**
+       * The vanity address, and the one field here that is deliberately *less*
+       * secure than what it sits next to.
+       *
+       * A UUID is unguessable and unmemorable; `prague-2026` is the opposite of
+       * both. Setting one trades secrecy for a link that can be read out over
+       * dinner, which is the right trade for an album shared with friends and
+       * the wrong one for a client's unreleased work. The UUID link never stops
+       * working, so nothing is lost by leaving this empty — see the note at the
+       * top of `@/lib/commissions/routes`.
+       *
+       * Normalised in `prepareCommission` rather than here, so that what the
+       * unique index sees is what this validator approved.
+       */
+      name: 'slug',
+      type: 'text',
+      admin: {
+        description:
+          'Optional. Gives this a friendly address: “prague-2026” becomes /album/prague-2026. Lowercase letters, numbers and hyphens. Easy to share and therefore easy to guess — add a password if that matters. The UUID link below keeps working either way.',
+        position: 'sidebar',
+      },
+      index: true,
+      label: 'Vanity link',
+      unique: true,
+      validate: (value: null | string | undefined) => {
+        const slug = normaliseCommissionSlug(value)
+
+        if (!slug) {
+          return true
+        }
+
+        return (
+          isValidCommissionSlug(slug) ||
+          `Use lowercase letters, numbers and hyphens only, up to ${MAX_COMMISSION_SLUG_LENGTH} characters — for example “prague-2026”.`
+        )
+      },
     },
     {
       /**
@@ -312,10 +395,18 @@ export const Commissions: CollectionConfig = {
          * changes every commission link at once, with no migration and no stale
          * rows. A link already sent out keeps working for as long as the old
          * domain resolves, because the UUID is the whole address.
+         *
+         * The *path* is rebuilt on every read too, so setting a vanity slug
+         * changes this link the moment the document is saved. `commissionPath`
+         * is the single opinion about which of a commission's two addresses is
+         * the canonical one; the UUID route redirects to whatever it says.
          */
         afterRead: [
-          ({ data }) =>
-            data?.uuid ? `${getSiteUrl()?.origin ?? ''}/commission/${data.uuid}` : null,
+          ({ data }) => {
+            const path = commissionPath({ slug: data?.slug, uuid: data?.uuid })
+
+            return path ? `${getSiteUrl()?.origin ?? ''}${path}` : null
+          },
         ],
       },
       label: 'Public link',

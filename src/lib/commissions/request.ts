@@ -115,11 +115,27 @@ export const parseUserAgent = (userAgent: null | string | undefined): ParsedUser
  * presigned URL (see `getPresignedDownloadUrl`), so the client cannot rewrite
  * it.
  */
-export const contentDispositionAttachment = (filename: string): string => {
+const contentDisposition = (type: 'attachment' | 'inline', filename: string): string => {
   const ascii = filename.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_')
 
-  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`
+  return `${type}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`
 }
+
+/** For a file the browser should save. The download endpoint's disposition. */
+export const contentDispositionAttachment = (filename: string): string =>
+  contentDisposition('attachment', filename)
+
+/**
+ * For an image the browser should paint. A gallery commission's grid points
+ * `<img src>` at presigned URLs carrying this, so the picture appears in the
+ * page instead of downloading itself.
+ *
+ * The filename rides along anyway, and earns its place: it is what a visitor's
+ * browser offers when they right-click and save, which on a photo album is the
+ * normal way anyone takes a copy of anything.
+ */
+export const contentDispositionInline = (filename: string): string =>
+  contentDisposition('inline', filename)
 
 /** One named cookie out of a raw `Cookie` header, or `null`. */
 export const readCookie = (cookieHeader: null | string, name: string): null | string => {

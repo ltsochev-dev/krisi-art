@@ -28,6 +28,12 @@
  *   that the route exists. Worth closing off twice: a crawler that fetched one
  *   of these pages would show up in the artist's access log as a phantom view,
  *   and following a download link would spend a presigned URL.
+ * - `/album/` — the same documents under their vanity slugs. This one matters
+ *   *more* than the two above rather than less, because the address is chosen to
+ *   be memorable and is therefore guessable: `noindex` on the route stops a page
+ *   that was crawled from being listed, and this stops it being crawled. An
+ *   album page is nothing but photographs, so being left out of image search is
+ *   the whole point.
  *
  * The one carve-out is `/api/media/file/`, which is where uploads are served
  * from when `S3_CDN_URL` is unset. Those URLs are the page images and the
@@ -48,7 +54,7 @@ const robots = (): MetadataRoute.Robots => {
   return {
     rules: {
       allow: ['/', '/api/media/file/'],
-      disallow: ['/admin', '/api/', '/commission/', '/invoice/'],
+      disallow: ['/admin', '/album/', '/api/', '/commission/', '/invoice/'],
       userAgent: '*',
     },
     // Absolute or omitted: the directive takes a full URL, and a crawler that

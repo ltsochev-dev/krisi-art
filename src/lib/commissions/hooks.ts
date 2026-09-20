@@ -14,11 +14,13 @@ import { randomUUID } from 'node:crypto'
 import { deleteObjects, getCommissionsBucket, hasCommissionsBucket } from '@/lib/aws/s3'
 
 import { hashPassword } from './password'
+import { normaliseCommissionSlug } from './routes'
 
 type CommissionData = Record<string, unknown>
 
 /**
- * Mint the UUID, and turn a submitted password into a hash.
+ * Mint the UUID, normalise the vanity slug, and turn a submitted password into
+ * a hash.
  *
  * The UUID is minted on create, like an invoice's: it is not part of any
  * sequence, it is just the unguessable address the client-facing page lives at,
@@ -62,6 +64,17 @@ export const prepareCommission: CollectionBeforeValidateHook = async ({
 
   if (operation === 'update' && originalDoc?.uuid) {
     next.uuid = originalDoc.uuid
+  }
+
+  /**
+   * The slug is lowercased and emptied to `null` here rather than in the field,
+   * so what the unique index sees is what the field validator approved. `null`
+   * and not `''` is the load-bearing half: SQLite permits any number of `NULL`s
+   * in a unique index and exactly one empty string, so without this the *second*
+   * commission saved with the box left empty would fail to save at all.
+   */
+  if ('slug' in next) {
+    next.slug = normaliseCommissionSlug(next.slug)
   }
 
   const submitted = typeof next.password === 'string' ? next.password.trim() : ''
