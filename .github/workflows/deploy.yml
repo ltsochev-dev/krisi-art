@@ -193,6 +193,14 @@ jobs:
           PORT: ${{ vars.DEPLOY_PORT || '22' }}
         run: |
           set -euo pipefail
+
+          # Named rather than left to fail further down: an empty secret writes
+          # an empty key file, and the failure then surfaces as a permission
+          # denial from the VPS three steps later, which reads like a problem
+          # with the box rather than with the repository settings.
+          [ -n "$SSH_KEY" ] || { echo "::error::DEPLOY_SSH_KEY is empty. Set the secret in the repository settings."; exit 1; }
+          [ -n "$HOST" ] || { echo "::error::DEPLOY_HOST is empty. Set the secret in the repository settings."; exit 1; }
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
@@ -201,7 +209,21 @@ jobs:
             printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           else
             echo "::warning::DEPLOY_KNOWN_HOSTS is unset — trusting the host key on first use."
-            ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+            # `ssh-keyscan` is the only command in this step that can fail, and
+            # it used to be run with its stderr sent to /dev/null: an unreachable
+            # box, a wrong port or a firewall that does not like this runner all
+            # came out as a bare `exit 1` with nothing whatsoever in the log to
+            # read. Its output stays now, and both ways it can fail are named.
+            if ! ssh-keyscan -T 15 -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts; then
+              echo "::error::ssh-keyscan got no answer from $HOST port $PORT. Either this runner cannot reach the box (firewall, wrong DEPLOY_HOST, or sshd on a port other than DEPLOY_PORT), or it can and you should set DEPLOY_KNOWN_HOSTS so the deploy does not depend on this fallback at all."
+              exit 1
+            fi
+
+            # It also exits 0 having written nothing when the host answers but
+            # offers no key type it knows, which would leave the SSH step below
+            # failing on an empty known_hosts instead.
+            [ -s ~/.ssh/known_hosts ] || { echo "::error::ssh-keyscan returned no host keys for $HOST port $PORT."; exit 1; }
           fi
           chmod 600 ~/.ssh/known_hosts
 

@@ -411,12 +411,12 @@ HTTPS for as long as it is listed.
 
 Secrets (**Settings → Secrets and variables → Actions → Secrets**):
 
-| Secret               | Purpose                                                                                                                 |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `DEPLOY_SSH_KEY`     | Private key, PEM, no passphrase. Its public half goes in the deploy user's `~/.ssh/authorized_keys`.                    |
-| `DEPLOY_HOST`        | VPS hostname or IP.                                                                                                     |
-| `DEPLOY_USER`        | SSH user; must be able to run `docker`.                                                                                 |
-| `DEPLOY_KNOWN_HOSTS` | Optional but recommended: `ssh-keyscan -H <host>` output. Without it the host key is trusted on first use on every run. |
+| Secret               | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DEPLOY_SSH_KEY`     | Private key, PEM, no passphrase. Its public half goes in the deploy user's `~/.ssh/authorized_keys`.                                                                                                                                                                                                                                                                                                                                    |
+| `DEPLOY_HOST`        | VPS hostname or IP.                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `DEPLOY_USER`        | SSH user; must be able to run `docker`.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `DEPLOY_KNOWN_HOSTS` | **Set this.** `ssh-keyscan -p <port> -H <host>` output, from a machine that can reach the box. Nominally optional — without it the workflow runs that `ssh-keyscan` itself, on a GitHub runner, and the deploy then fails whenever the runner cannot reach sshd (firewall, an IP allowlist, a non-default port). It is also the only version that authenticates the host at all: a key trusted on first use, every run, is not a check. |
 
 Variables (same page, **Variables** tab) — all optional:
 
