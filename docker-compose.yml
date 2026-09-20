@@ -33,6 +33,13 @@ services:
       - database:/app/database
       # Only used when S3_BUCKET is unset, when uploads fall back to local disk.
       - media:/app/media
+      # The `next/image` optimiser's output, which is otherwise in the
+      # container's writable layer and therefore discarded on every deploy.
+      # A commission gallery is 220 tiles, each one a 10-megapixel original
+      # fetched from S3 and decoded, so re-doing them all on a release is the
+      # difference between a page that loads and one that times out. Tens of
+      # megabytes at most — the files in it are the ~15KB WebPs it serves.
+      - image-cache:/app/.next/cache/images
     healthcheck:
       test:
         [
@@ -49,3 +56,4 @@ services:
 volumes:
   database:
   media:
+  image-cache:

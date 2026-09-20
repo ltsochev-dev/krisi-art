@@ -63,9 +63,16 @@ RUN adduser --system --uid 1001 nextjs
 # Remove this line if you do not have this folder
 # COPY --from=builder /app/public ./public
 
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# Set the correct permission for prerender cache.
+#
+# `.next/cache/images` is created here rather than left to the server, because
+# compose mounts a volume over it: Docker seeds a named volume from the image
+# directory it covers — ownership included — and creates it *root-owned* when
+# there is nothing there to copy, which the runtime user cannot write to. The
+# optimiser would then fall back to re-encoding every image on every request.
+# Same trap as `database` and `media` below.
+RUN mkdir -p .next/cache/images
+RUN chown -R nextjs:nodejs .next
 
 # Mount points for the SQLite file and the local-disk upload fallback. They have
 # to exist here, owned by the runtime user: Docker seeds a named volume from the

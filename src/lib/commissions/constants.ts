@@ -98,12 +98,17 @@ export const isAllowedCommissionMimeType = (value: unknown): value is string =>
  *   would have the server re-download and re-encode 150 originals on every page
  *   load — the exact work the optimiser exists to do once.
  *
- * Twelve hours, rather than the three this shipped with, for the second reason:
- * the optimised copies survive only until the URL under them rotates, so a short
- * window is a standing bill in S3 egress and CPU for no benefit to anyone.
- * The cost of the longer one is that a signed URL that leaks — out of a shared
- * screen, a browser history — stays good for a day rather than a quarter of one,
- * on a page whose protection is an unguessable link to begin with.
+ * A day, rather than the three hours this shipped with, and the second reason is
+ * the whole of it. A rotation invalidates the optimiser's copy of *every* photo
+ * in the album at once, and the next visitor pays for all of them — on an album
+ * of 220 that is 220 originals fetched from S3 and decoded, which the deployed
+ * container cannot do concurrently without timing out. Rotating twice a day
+ * rather than eight times is most of that bill gone.
+ *
+ * The cost is that a signed URL which leaks — out of a shared screen, a browser
+ * history — stays good for two days rather than six hours, on a page whose
+ * protection is an unguessable link to begin with. `COMMISSION_GALLERY_WINDOW_SECONDS`
+ * moves it either way; the clamp below is the ceiling.
  *
  * The URLs are signed to live for *two* windows, so one minted at the very end
  * of a window is still good for a window afterwards rather than expiring in the
@@ -114,7 +119,7 @@ export const GALLERY_URL_WINDOW_SECONDS = (): number =>
   // an expiry beyond seven days — an override of, say, a fortnight would
   // otherwise turn every gallery into a signing error rather than a long-lived
   // link.
-  Math.min(seconds('COMMISSION_GALLERY_WINDOW_SECONDS', 12 * 60 * 60), 3 * 24 * 60 * 60)
+  Math.min(seconds('COMMISSION_GALLERY_WINDOW_SECONDS', 24 * 60 * 60), 3 * 24 * 60 * 60)
 
 /**
  * What a browser will actually paint from a presigned URL.

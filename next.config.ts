@@ -137,6 +137,39 @@ const nextConfig: NextConfig = {
       })),
     ],
   },
+  /**
+   * The image optimiser, tuned for a small VPS rather than for a build server.
+   *
+   * A gallery commission is the only page on this site that asks it for more
+   * than a handful of images at once: 220 tiles, each one a 10-megapixel
+   * original pulled from S3 and decoded. Served one at a time that is under a
+   * second each; served all at once it collapses, and the measurements are not
+   * subtle — ten concurrent requests against the deployed container came back as
+   * nine gateway timeouts after 170 seconds apiece, having taken 0.5s each
+   * sequentially a minute earlier.
+   *
+   * Two separate causes, one setting each:
+   *
+   * - `imgOptConcurrency` caps the threads *libvips* uses per image. Left alone
+   *   it is half the core count per concurrent request, so a burst of tiles
+   *   spawns far more threads than the box has cores and every one of them holds
+   *   a share of a decoded bitmap. One thread per image is slower in isolation
+   *   and dramatically cheaper under load, which is the case that matters here.
+   * - `imgOptTimeoutInSeconds` defaults to **7**, which is the number that turns
+   *   a slow queue into a broken page: an image that would have finished in nine
+   *   seconds is abandoned and answered 500, and the failure is not cached, so
+   *   the next visitor starts it again. Thirty is long enough that a queued
+   *   image waits rather than fails.
+   *
+   * `imgOptSequentialRead` reads the source progressively instead of holding the
+   * whole decoded frame, which is what libvips recommends for exactly this shape
+   * of work — large JPEGs shrunk to thumbnails.
+   */
+  experimental: {
+    imgOptConcurrency: 1,
+    imgOptSequentialRead: true,
+    imgOptTimeoutInSeconds: 30,
+  },
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
       '.cjs': ['.cts', '.cjs'],

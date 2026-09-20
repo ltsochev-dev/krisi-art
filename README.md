@@ -360,6 +360,34 @@ server {
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+    # Image optimisation, queued rather than run all at once.
+    #
+    # A commission gallery is 220 tiles and a browser will ask for as many of
+    # them as it can multiplex, each one a 10-megapixel original that this box
+    # has to fetch from S3 and decode. Served one at a time that is well under a
+    # second each; served all at once the container thrashes and every request
+    # dies at the proxy — measured on this deployment, ten concurrent tiles came
+    # back as nine 504s after 170 seconds apiece, having taken 0.5s each
+    # sequentially a minute earlier.
+    #
+    # `burst` with `delay` *queues* the excess instead of rejecting it, which is
+    # the whole point: a tile that waits four seconds is a tile that appears,
+    # and one answered 503 is a broken picture. The app-side half of this is
+    # `experimental.imgOptConcurrency` in `next.config.ts`.
+    location /_next/image {
+        limit_req zone=imgopt burst=200 delay=4;
+
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Longer than the default 60s: a queued tile is waiting its turn, not
+        # hung, and the optimiser's own ceiling is 30 seconds per image.
+        proxy_read_timeout 120s;
+    }
 }
 
 # Port 80 exists only to hand both hostnames to HTTPS.
@@ -368,6 +396,11 @@ server {
     server_name kristinakostova.com www.kristinakostova.com;
     return 308 https://kristinakostova.com$request_uri;
 }
+
+# In the `http` block, not a `server` one — a zone is shared state and has to be
+# declared where nginx keeps it. Four images a second is what the box manages
+# comfortably; the burst above is what lets a whole album queue behind it.
+limit_req_zone $binary_remote_addr zone=imgopt:10m rate=4r/s;
 ```
 
 Do not add `preload` to the header. It enrolls the domain in a list baked into

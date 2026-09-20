@@ -1301,13 +1301,13 @@ describe('commissions', () => {
         delete process.env.COMMISSION_GALLERY_WINDOW_SECONDS
 
         /**
-         * Twelve hours, and the length is load-bearing rather than a taste: the
-         * grid draws its tiles through `next/image`, whose optimiser caches on
-         * the `src` it was handed, so every rotation of this window throws away
-         * the resized copies of every photo in the album and makes the server
-         * fetch and re-encode the originals again.
+         * A day, and the length is load-bearing rather than a taste: the grid
+         * draws its tiles through `next/image`, whose optimiser caches on the
+         * `src` it was handed, so every rotation of this window throws away the
+         * resized copy of every photo in the album and leaves the next visitor
+         * to pay for fetching and re-encoding all of them.
          */
-        expect(GALLERY_URL_WINDOW_SECONDS()).toBe(12 * 60 * 60)
+        expect(GALLERY_URL_WINDOW_SECONDS()).toBe(24 * 60 * 60)
 
         process.env.COMMISSION_GALLERY_WINDOW_SECONDS = '600'
         expect(GALLERY_URL_WINDOW_SECONDS()).toBe(600)
@@ -1320,7 +1320,7 @@ describe('commissions', () => {
 
         // Anything unusable falls back to the default rather than to zero.
         process.env.COMMISSION_GALLERY_WINDOW_SECONDS = 'soon'
-        expect(GALLERY_URL_WINDOW_SECONDS()).toBe(12 * 60 * 60)
+        expect(GALLERY_URL_WINDOW_SECONDS()).toBe(24 * 60 * 60)
       } finally {
         if (original === undefined) {
           delete process.env.COMMISSION_GALLERY_WINDOW_SECONDS
