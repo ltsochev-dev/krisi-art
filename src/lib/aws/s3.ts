@@ -184,6 +184,14 @@ export const hasCommissionsBucket = (): boolean =>
  * URL cannot rewrite them to render an attachment inline. Without the first, a
  * browser paints a JPEG on screen instead of saving it and the client loses the
  * original filename.
+ *
+ * `signingDate` pins the timestamp the signature is computed from, which is
+ * otherwise "now" and therefore different on every call. Passing a rounded one
+ * makes repeated signings of the same object produce the *same* URL, so a
+ * browser can serve it from cache instead of re-downloading — see
+ * `GALLERY_URL_WINDOW_SECONDS`. It shortens the URL's remaining life by however
+ * far back it is rounded, so a caller that pins it has to budget `expiresIn`
+ * accordingly.
  */
 export const getPresignedDownloadUrl = async ({
   bucket,
@@ -191,12 +199,14 @@ export const getPresignedDownloadUrl = async ({
   key,
   responseContentDisposition,
   responseContentType,
+  signingDate,
 }: {
   bucket?: string
   expiresIn?: number
   key: string
   responseContentDisposition?: string
   responseContentType?: string
+  signingDate?: Date
 }): Promise<string> =>
   await getSignedUrl(
     getS3Client(),
@@ -206,7 +216,7 @@ export const getPresignedDownloadUrl = async ({
       ResponseContentDisposition: responseContentDisposition,
       ResponseContentType: responseContentType,
     }),
-    { expiresIn },
+    { expiresIn, ...(signingDate ? { signingDate } : {}) },
   )
 
 /**

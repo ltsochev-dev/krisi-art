@@ -191,9 +191,9 @@ describe('crawler metadata routes', () => {
   })
 
   describe('robots.txt', () => {
-    it('closes off the admin, the API, invoices and commissions', () => {
+    it('closes off the admin, the API, invoices, commissions and albums', () => {
       expect(robots().rules).toMatchObject({
-        disallow: ['/admin', '/api/', '/commission/', '/invoice/'],
+        disallow: ['/admin', '/album/', '/api/', '/commission/', '/invoice/'],
         userAgent: '*',
       })
     })

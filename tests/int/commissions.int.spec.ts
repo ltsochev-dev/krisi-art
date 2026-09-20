@@ -44,13 +44,21 @@ import {
   logCommissionAccess,
   VIEW_DEDUPE_WINDOW_MS,
 } from '@/lib/commissions/access-log'
+import { isDisplayableImage } from '@/lib/commissions/constants'
+import { buildCommissionGallery, galleryWindowStart } from '@/lib/commissions/gallery'
 import {
   buildCommissionKey,
   downloadFilename,
   isKeyForCommission,
   sanitiseFilename,
 } from '@/lib/commissions/keys'
-import { verifyPassword } from '@/lib/commissions/password'
+import { unlockCookiePaths, verifyPassword } from '@/lib/commissions/password'
+import {
+  commissionPath,
+  isValidCommissionSlug,
+  MAX_COMMISSION_SLUG_LENGTH,
+  normaliseCommissionSlug,
+} from '@/lib/commissions/routes'
 import {
   contentDispositionAttachment,
   getClientIp,
@@ -59,6 +67,8 @@ import {
 import {
   evaluateCommissionGate,
   findCommissionByUuid,
+  findCommissionRecordBySlug,
+  toCommissionLayout,
   toPublicCommission,
 } from '@/lib/content/commissions'
 import config from '@/payload.config'
@@ -744,7 +754,7 @@ describe('commissions', () => {
      * later has to fail this test and be looked at, instead of quietly
      * arriving in the browser.
      */
-    const PUBLIC_COMMISSION_KEYS = ['description', 'files', 'hasPassword', 'title']
+    const PUBLIC_COMMISSION_KEYS = ['description', 'files', 'hasPassword', 'layout', 'title']
     const PUBLIC_FILE_KEYS = ['fileId', 'filesize', 'mimeType', 'name']
 
     let commission: Commission
@@ -1130,6 +1140,188 @@ describe('commissions', () => {
       await payload.delete({ collection: 'commissions', id: commission.id, overrideAccess: true })
 
       expect(deleteObjects).not.toHaveBeenCalled()
+    })
+  })
+
+  // --- Private albums ------------------------------------------------------
+
+  describe('the vanity slug', () => {
+    it('lowercases and trims, and empties to null rather than to a string', () => {
+      expect(normaliseCommissionSlug('  Prague-2026  ')).toBe('prague-2026')
+      expect(normaliseCommissionSlug('   ')).toBeNull()
+      expect(normaliseCommissionSlug('')).toBeNull()
+      expect(normaliseCommissionSlug(undefined)).toBeNull()
+    })
+
+    it('accepts hyphenated words and refuses everything that is not one', () => {
+      expect(isValidCommissionSlug('prague-2026')).toBe(true)
+      expect(isValidCommissionSlug('trip')).toBe(true)
+
+      // A slug lands in a URL path and in a cookie path, so none of these may
+      // ever reach either.
+      for (const bad of ['../etc', 'a/b', 'has space', 'trailing-', '-leading', 'double--dash']) {
+        expect(isValidCommissionSlug(bad)).toBe(false)
+      }
+
+      expect(isValidCommissionSlug('a'.repeat(MAX_COMMISSION_SLUG_LENGTH + 1))).toBe(false)
+    })
+
+    it('prefers the slug over the UUID as the canonical path', () => {
+      expect(commissionPath({ slug: 'prague-2026', uuid: 'abc' })).toBe('/album/prague-2026')
+      expect(commissionPath({ slug: null, uuid: 'abc' })).toBe('/commission/abc')
+      expect(commissionPath({ slug: '  ', uuid: 'abc' })).toBe('/commission/abc')
+
+      // The admin panel's new-document form, before anything is saved.
+      expect(commissionPath({})).toBeNull()
+    })
+
+    it('stores an empty slug as null, so two commissions can both have none', async () => {
+      const first = await createCommission({ slug: '   ', title: `${PREFIX} no slug one` })
+      const second = await createCommission({ slug: '', title: `${PREFIX} no slug two` })
+
+      // The trap this guards: the column carries a unique index, and SQLite
+      // allows any number of NULLs in one but exactly one empty string. Stored
+      // as `''`, the second of these would fail to save at all.
+      expect(await storedRow(first.id)).toMatchObject({ slug: null })
+      expect(await storedRow(second.id)).toMatchObject({ slug: null })
+    })
+
+    it('lowercases on save and resolves however the visitor typed it', async () => {
+      const commission = await createCommission({
+        slug: '  Prague-2026  ',
+        title: `${PREFIX} slugged`,
+      })
+
+      expect(await storedRow(commission.id)).toMatchObject({ slug: 'prague-2026' })
+
+      // A link read off a phone keyboard that capitalised the first letter has
+      // to reach the same album.
+      const found = await findCommissionRecordBySlug({ payload, slug: 'Prague-2026' })
+
+      expect(found?.id).toBe(commission.id)
+      expect(await findCommissionRecordBySlug({ payload, slug: 'never-went' })).toBeNull()
+      expect(await findCommissionRecordBySlug({ payload, slug: '  ' })).toBeNull()
+    })
+
+    it('rebuilds publicUrl from the slug the moment one is set', async () => {
+      const commission = await createCommission({ title: `${PREFIX} relinked` })
+
+      expect(commission.publicUrl?.endsWith(`/commission/${commission.uuid}`)).toBe(true)
+
+      const renamed = await payload.update({
+        collection: 'commissions',
+        data: { slug: 'sofia-2027' },
+        depth: 0,
+        id: commission.id,
+        overrideAccess: true,
+      })
+
+      // Virtual, so the link follows the slug with no migration and no stale
+      // row — and the UUID is untouched, which is what keeps the old link
+      // working as a redirect.
+      expect(renamed.publicUrl?.endsWith('/album/sofia-2027')).toBe(true)
+      expect(renamed.uuid).toBe(commission.uuid)
+    })
+  })
+
+  describe('the unlock cookie scope', () => {
+    /**
+     * The regression this locks down: the page and the download endpoint are
+     * not under a common path prefix, so a token scoped only to the page is
+     * never sent to the endpoint that checks it — and every download from a
+     * password-protected commission answers 401 however many times the visitor
+     * types the password correctly.
+     */
+    it('covers the download endpoint as well as the page', () => {
+      const paths = unlockCookiePaths({ slug: null, uuid: 'abc-123' })
+
+      expect(paths).toContain('/commission/abc-123')
+      expect(paths).toContain('/api/commissions/abc-123')
+
+      // Path matching is a prefix test on segment boundaries, so the endpoint's
+      // own path has to sit underneath one of these.
+      expect(
+        paths.some((path) => '/api/commissions/abc-123/download/file-one'.startsWith(`${path}/`)),
+      ).toBe(true)
+    })
+
+    it('follows the album path when a slug is set', () => {
+      const paths = unlockCookiePaths({ slug: 'prague-2026', uuid: 'abc-123' })
+
+      // Never both page paths: the UUID route redirects to the canonical one,
+      // so a cookie scoped to it would be scoped to a URL nobody stays on.
+      expect(paths).toContain('/album/prague-2026')
+      expect(paths).not.toContain('/commission/abc-123')
+      expect(paths).toContain('/api/commissions/abc-123')
+    })
+  })
+
+  describe('the gallery', () => {
+    it('narrows a stored layout, defaulting to the file list', () => {
+      expect(toCommissionLayout('gallery')).toBe('gallery')
+      expect(toCommissionLayout('files')).toBe('files')
+
+      // Anything else is a document written before the field existed, or a
+      // value someone invented. Neither should render as a photo grid.
+      expect(toCommissionLayout(null)).toBe('files')
+      expect(toCommissionLayout('grid')).toBe('files')
+    })
+
+    it('counts only what a browser will actually paint as an image', () => {
+      for (const displayable of ['image/jpeg', 'image/png', 'image/webp', 'IMAGE/GIF']) {
+        expect(isDisplayableImage(displayable)).toBe(true)
+      }
+
+      // All four are uploadable and none of them renders: HEIC is what an
+      // iPhone album is full of, and SVG is a document that can carry script.
+      for (const not of ['image/heic', 'image/tiff', 'image/svg+xml', 'application/zip', null]) {
+        expect(isDisplayableImage(not)).toBe(false)
+      }
+    })
+
+    it('pins every signature in a window to the same instant', () => {
+      const window = 3 * 60 * 60
+      const early = galleryWindowStart(new Date('2026-09-20T09:00:01.000Z'), window)
+      const late = galleryWindowStart(new Date('2026-09-20T11:59:59.000Z'), window)
+      const next = galleryWindowStart(new Date('2026-09-20T12:00:01.000Z'), window)
+
+      // Two renders inside one window produce byte-identical URLs, which is the
+      // entire reason for this: gallery images are the artist's originals with
+      // no derivatives behind them, so a URL that changed per request would
+      // re-download every photo on every page load.
+      expect(early.toISOString()).toBe('2026-09-20T09:00:00.000Z')
+      expect(late.toISOString()).toBe(early.toISOString())
+      expect(next.toISOString()).toBe('2026-09-20T12:00:00.000Z')
+    })
+
+    it('falls back to a plain file list when no bucket is configured', async () => {
+      delete process.env.S3_COMMISSIONS_BUCKET
+
+      const commission = await createCommission({ title: `${PREFIX} gallery unconfigured` })
+      const stored = await payload.update({
+        collection: 'commissions',
+        data: {
+          files: [
+            {
+              fileId: 'photo-one',
+              filename: 'sunset.jpg',
+              key: `${commission.uuid}/photo-one/sunset.jpg`,
+              mimeType: 'image/jpeg',
+            },
+          ],
+          layout: 'gallery',
+        },
+        depth: 0,
+        id: commission.id,
+        overrideAccess: true,
+      })
+
+      // A checkout with no AWS environment renders an honest download list
+      // rather than a grid of broken images, and signs nothing.
+      const gallery = await buildCommissionGallery({ commission: stored })
+
+      expect(gallery.images).toHaveLength(0)
+      expect(gallery.files.map((file) => file.name)).toEqual(['sunset.jpg'])
     })
   })
 })

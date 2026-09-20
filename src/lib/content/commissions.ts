@@ -17,9 +17,11 @@
  * tagged cache would mean a full invalidation per page view. A cache here would
  * cost more than it saved and would make the view counter lie.
  */
-import type { Payload, PayloadRequest } from 'payload'
+import type { Payload, PayloadRequest, Where } from 'payload'
 
 import type { Commission } from '@/payload-types'
+
+import { normaliseCommissionSlug } from '@/lib/commissions/routes'
 
 /**
  * What the browser is allowed to know about a commission.
@@ -41,8 +43,27 @@ export type PublicCommission = {
   files: PublicCommissionFile[]
   /** So the page knows to render the password gate. Never the hash itself. */
   hasPassword: boolean
+  /** How the page draws itself — a download list, or a photo grid. */
+  layout: CommissionLayout
   title: string
 }
+
+/**
+ * The two ways a commission presents itself.
+ *
+ * `files` is the original: a client collecting finished work. `gallery` is the
+ * same document — same private bucket, same link, same optional password —
+ * rendered as a photo grid, which is what makes a commission usable as a
+ * private album shared with friends.
+ *
+ * Nothing about access control varies between them. The layout decides what the
+ * page looks like and nothing else.
+ */
+export type CommissionLayout = 'files' | 'gallery'
+
+/** Narrows a stored value to a layout, defaulting the way the field does. */
+export const toCommissionLayout = (value: unknown): CommissionLayout =>
+  value === 'gallery' ? 'gallery' : 'files'
 
 export type PublicCommissionFile = {
   fileId: string
@@ -98,19 +119,15 @@ export const evaluateCommissionGate = (
  * `depth: 0`: nothing on the document is a relationship worth populating, and
  * the `accessLog` join would otherwise be fetched on every download.
  */
-export const findCommissionRecordByUuid = async ({
+const findCommissionRecord = async ({
   payload,
   req,
-  uuid,
+  where,
 }: {
   payload: Payload
   req?: PayloadRequest
-  uuid: string
+  where: Where
 }): Promise<Commission | null> => {
-  if (!uuid) {
-    return null
-  }
-
   const { docs } = await payload.find({
     collection: 'commissions',
     depth: 0,
@@ -119,24 +136,77 @@ export const findCommissionRecordByUuid = async ({
     overrideAccess: true,
     pagination: false,
     ...(req ? { req } : {}),
-    where: { uuid: { equals: uuid } },
+    where,
   })
 
   return docs[0] ?? null
 }
+
+export const findCommissionRecordByUuid = async ({
+  payload,
+  req,
+  uuid,
+}: {
+  payload: Payload
+  req?: PayloadRequest
+  uuid: string
+}): Promise<Commission | null> =>
+  uuid ? await findCommissionRecord({ payload, req, where: { uuid: { equals: uuid } } }) : null
+
+/**
+ * The same, keyed on the vanity slug the artist chose.
+ *
+ * The slug is a *convenience*, not a second secret — see the note at the top of
+ * `@/lib/commissions/routes`. This finder is therefore no wider a hole than the
+ * UUID one, but it is a shallower one, and a commission addressed by a guessable
+ * slug is relying on its password (or on nobody guessing) rather than on the
+ * link.
+ *
+ * The lookup normalises first, so `/album/Prague-2026` finds the commission
+ * stored as `prague-2026` instead of 404ing on the capital letter someone's
+ * phone keyboard added.
+ */
+export const findCommissionRecordBySlug = async ({
+  payload,
+  req,
+  slug,
+}: {
+  payload: Payload
+  req?: PayloadRequest
+  slug: string
+}): Promise<Commission | null> => {
+  const normalised = normaliseCommissionSlug(slug)
+
+  return normalised
+    ? await findCommissionRecord({ payload, req, where: { slug: { equals: normalised } } })
+    : null
+}
+
+/**
+ * One stored file row, narrowed to what the browser may have.
+ *
+ * Its own function because a gallery commission needs the same narrowing on a
+ * different set of rows — `buildCommissionGallery` splits the array in two and
+ * projects each half — and the one omission that matters most is easy to undo
+ * by accident: the S3 `key` is not here, and must not be.
+ */
+export const toPublicCommissionFile = (
+  file: NonNullable<Commission['files']>[number],
+): PublicCommissionFile => ({
+  fileId: file.fileId,
+  filesize: file.filesize ?? null,
+  mimeType: file.mimeType ?? null,
+  name: file.label?.trim() || file.filename,
+})
 
 /** Narrows a stored commission to the fields the browser may have. */
 export const toPublicCommission = (commission: Commission): PublicCommission => ({
   description: commission.description ?? null,
   files: (commission.files ?? [])
     .filter((file) => Boolean(file.fileId))
-    .map((file) => ({
-      fileId: file.fileId,
-      filesize: file.filesize ?? null,
-      mimeType: file.mimeType ?? null,
-      name: file.label?.trim() || file.filename,
-    })),
+    .map(toPublicCommissionFile),
   hasPassword: Boolean(commission.passwordHash),
+  layout: toCommissionLayout(commission.layout),
   title: commission.title,
 })
 

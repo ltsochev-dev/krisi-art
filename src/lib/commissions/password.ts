@@ -22,6 +22,8 @@ import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:cry
 
 import { jwtVerify, SignJWT } from 'jose'
 
+import { commissionPath } from './routes'
+
 /**
  * Promisified `scrypt`, by hand rather than through `promisify`.
  *
@@ -146,8 +148,30 @@ const getSecret = (): Uint8Array => {
  */
 export const unlockCookieName = (uuid: string): string => `commission_${uuid}`
 
-/** Path the unlock cookie is scoped to, so it is sent nowhere else. */
-export const unlockCookiePath = (uuid: string): string => `/commission/${uuid}`
+/**
+ * The paths the unlock token is scoped to — **two** of them, and the second one
+ * is load-bearing rather than defensive.
+ *
+ * A cookie is only sent to its own path and below it. The page lives at
+ * `/album/<slug>` or `/commission/<uuid>`, but the download endpoint lives at
+ * `/api/commissions/<uuid>/download/<fileId>`, which is under neither — so a
+ * token scoped only to the page is never sent to the endpoint that has to check
+ * it, and every download from a password-protected commission answers 401 no
+ * matter how many times the client types the password correctly. The fix is two
+ * cookies carrying the same token, one scoped to each surface.
+ *
+ * `/api` rather than a value read from the Payload config: the client already
+ * hardcodes that prefix when it calls the endpoints (see `CommissionFiles`), so
+ * a second opinion about it here would only be a way for the two to disagree.
+ *
+ * Still deliberately narrow. Scoping to `/` would work and would put the token
+ * on every request to the portfolio as well, which is exactly what path scoping
+ * is for avoiding.
+ */
+export const unlockCookiePaths = (commission: { slug?: null | string; uuid: string }): string[] => [
+  commissionPath(commission) ?? `/commission/${commission.uuid}`,
+  `/api/commissions/${encodeURIComponent(commission.uuid)}`,
+]
 
 export const signUnlockToken = async (uuid: string): Promise<string> =>
   await new SignJWT({ uuid })

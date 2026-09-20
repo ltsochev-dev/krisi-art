@@ -78,3 +78,54 @@ export const ALLOWED_COMMISSION_MIME_TYPES = [
 export const isAllowedCommissionMimeType = (value: unknown): value is string =>
   typeof value === 'string' &&
   (ALLOWED_COMMISSION_MIME_TYPES as readonly string[]).includes(value.trim().toLowerCase())
+
+/**
+ * The window a gallery image's URL is signed against.
+ *
+ * Gallery images are *displayed*, not clicked, so unlike `DOWNLOAD_URL_TTL_SECONDS`
+ * this one cannot be short: the URLs are rendered into the page, and a tab left
+ * open over lunch must still show pictures when it comes back.
+ *
+ * It is a **window** rather than a plain TTL because the signature is pinned to
+ * the start of it (see `signedViewUrl`). Within one window every render of the
+ * page produces byte-identical URLs, so a visitor's browser cache actually hits
+ * on the second visit — which matters a great deal here, since gallery images
+ * are served as the originals the artist uploaded with no derivatives behind
+ * them. A URL freshly signed per request would re-download every photo on every
+ * page load.
+ *
+ * The URLs are signed to live for *two* windows, so one minted at the very end
+ * of a window is still good for an hour afterwards rather than expiring in the
+ * visitor's hands.
+ */
+export const GALLERY_URL_WINDOW_SECONDS = (): number =>
+  // Clamped, because the URLs are signed to last two windows and SigV4 refuses
+  // an expiry beyond seven days — an override of, say, a fortnight would
+  // otherwise turn every gallery into a signing error rather than a long-lived
+  // link.
+  Math.min(seconds('COMMISSION_GALLERY_WINDOW_SECONDS', 3 * 60 * 60), 3 * 24 * 60 * 60)
+
+/**
+ * What a browser will actually paint from a presigned URL.
+ *
+ * A subset of `ALLOWED_COMMISSION_MIME_TYPES`, and the omissions are the point:
+ * TIFF, HEIC and HEIF are all uploadable and none of them renders in Chrome or
+ * Firefox. A gallery commission puts anything not listed here in the file list
+ * underneath the grid instead, where it is a download rather than a broken
+ * image. That is the honest answer for an iPhone album shared straight out of
+ * Photos, which is HEIC unless the phone was asked for "Most Compatible".
+ *
+ * SVG is left out for a different reason: it is a document that can carry
+ * script, and nothing in a photo album has any business being one.
+ */
+export const DISPLAYABLE_IMAGE_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/gif',
+] as const
+
+export const isDisplayableImage = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  (DISPLAYABLE_IMAGE_MIME_TYPES as readonly string[]).includes(value.trim().toLowerCase())

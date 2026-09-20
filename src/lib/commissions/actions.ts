@@ -35,7 +35,7 @@ import {
   signUnlockToken,
   UNLOCK_TOKEN_MAX_AGE_SECONDS,
   unlockCookieName,
-  unlockCookiePath,
+  unlockCookiePaths,
   verifyPassword,
 } from './password'
 import { getClientIp } from './request'
@@ -159,19 +159,28 @@ export const unlockCommission = async (
     const cookieStore = await getCookies()
 
     /**
-     * Scoped to this one commission's path, so unlocking one link never unlocks
+     * Scoped to this one commission's paths, so unlocking one link never unlocks
      * another and the token is not sent to any other route on the site.
      * `httpOnly` because no client code has any reason to read it, and
      * `sameSite: 'lax'` so it survives the client following the link out of a
      * mail client or a chat app.
+     *
+     * One cookie per path — the page and the endpoints are not under a common
+     * prefix; `unlockCookiePaths` explains why that is not optional.
+     *
+     * The paths come from the **stored** commission, never from the form. The
+     * client supplies a UUID and nothing else; a path taken from a submitted
+     * field would be a caller choosing where its own credential gets sent.
      */
-    cookieStore.set(unlockCookieName(uuid), token, {
-      httpOnly: true,
-      maxAge: UNLOCK_TOKEN_MAX_AGE_SECONDS,
-      path: unlockCookiePath(uuid),
-      sameSite: 'lax',
-      secure: isSecureRequest(requestHeaders),
-    })
+    for (const path of unlockCookiePaths({ slug: commission.slug, uuid })) {
+      cookieStore.set(unlockCookieName(uuid), token, {
+        httpOnly: true,
+        maxAge: UNLOCK_TOKEN_MAX_AGE_SECONDS,
+        path,
+        sameSite: 'lax',
+        secure: isSecureRequest(requestHeaders),
+      })
+    }
   } catch (error) {
     // Only reachable with `PAYLOAD_SECRET` unset, which is a deployment fault
     // rather than anything the client did — so it is logged loudly and reported

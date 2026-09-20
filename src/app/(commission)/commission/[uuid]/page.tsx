@@ -1,43 +1,44 @@
 /**
- * The commission as the client sees it: a title, a note from the artist, and a
- * list of files to download.
+ * A commission at its UUID — the address minted with the document, and the one
+ * that never changes.
  *
- * Addressed by the commission's UUID and by nothing else — possession of the
- * link is the authorisation, which is why the read helper is one of only two
- * places in the app that reach into an `editors`-only collection on an anonymous
- * request. See the note at the top of `@/lib/content/commissions`.
+ * Possession of the link is the authorisation, which is why the read helper is
+ * one of only two places in the app that reach into an `editors`-only collection
+ * on an anonymous request. See the note at the top of `@/lib/content/commissions`.
  *
- * Three things about what this page does and does not send:
+ * **When the artist has set a vanity slug this route redirects to it** rather
+ * than serving the same page at a second URL. `@/lib/commissions/routes` explains
+ * why that is not merely tidiness: the unlock cookie is scoped to the page's own
+ * path, so two live addresses would mean a password typed at one of them not
+ * being remembered at the other. The UUID link therefore keeps working forever,
+ * as promised — it just hands over.
  *
- * - **`notFound()` covers every refusal.** `findCommissionByUuid` returns `null`
- *   for a commission that does not exist, one that is not enabled and one whose
- *   expiry has passed, and all three render the same 404. A client with a lapsed
- *   link gets no confirmation that the UUID was ever valid, and someone probing
- *   for links learns nothing from the response.
- * - **The password gate is an early return, not a conditional branch in the
- *   tree.** When a password is required and the request has no valid unlock
- *   cookie, the file list is never constructed at all — so it cannot end up in
- *   the RSC payload, which is a thing that reaches the browser whether or not
- *   the markup renders it.
- * - **Nothing on this page is a secret in the S3 sense.** The projection carries
- *   `fileId`s, never keys; the client asks the download endpoint for a signed URL
- *   at the moment it clicks.
+ * `notFound()` covers every refusal. `findCommissionRecordByUuid` plus
+ * `evaluateCommissionGate` reject a commission that does not exist, one that is
+ * not enabled and one whose expiry has passed, and all three render the same
+ * 404. A client with a lapsed link gets no confirmation that the UUID was ever
+ * valid, and someone probing for links learns nothing from the response.
  */
 import type { Metadata } from 'next'
 
 import React from 'react'
 
-import { cookies as getCookies } from 'next/headers'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 
-import CommissionFiles from '@/components/commission/CommissionFiles'
-import PasswordGate from '@/components/commission/PasswordGate'
-import { unlockCookieName, verifyUnlockToken } from '@/lib/commissions/password'
-import { findCommissionByUuid } from '@/lib/content/commissions'
+import CommissionView from '@/components/commission/CommissionView'
+import { commissionPath } from '@/lib/commissions/routes'
+import { evaluateCommissionGate, findCommissionRecordByUuid } from '@/lib/content/commissions'
 import config from '@/payload.config'
 
 type Props = { params: Promise<{ uuid: string }> }
+
+const resolve = async (uuid: string) => {
+  const payload = await getPayload({ config: await config })
+  const commission = await findCommissionRecordByUuid({ payload, uuid })
+
+  return commission?.uuid && evaluateCommissionGate(commission).ok ? commission : null
+}
 
 /**
  * Only the title, so the `robots` directives set on the layout survive — Next
@@ -53,55 +54,28 @@ type Props = { params: Promise<{ uuid: string }> }
  */
 export const generateMetadata = async ({ params }: Props): Promise<Metadata> => {
   const { uuid } = await params
-  const payload = await getPayload({ config: await config })
-  const commission = await findCommissionByUuid({ payload, uuid })
+  const commission = await resolve(uuid)
 
   if (!commission) {
     return {}
   }
 
-  return { title: commission.hasPassword ? 'Protected files' : commission.title }
+  return { title: commission.passwordHash ? 'Protected files' : commission.title }
 }
 
 export default async function CommissionPage({ params }: Props) {
   const { uuid } = await params
-  const payload = await getPayload({ config: await config })
-  const commission = await findCommissionByUuid({ payload, uuid })
+  const commission = await resolve(uuid)
 
-  if (!commission) {
+  if (!commission?.uuid) {
     notFound()
   }
 
-  if (commission.hasPassword) {
-    const cookieStore = await getCookies()
-    const unlocked = await verifyUnlockToken(cookieStore.get(unlockCookieName(uuid))?.value, uuid)
+  const canonical = commissionPath(commission)
 
-    if (!unlocked) {
-      return (
-        <main className="page">
-          <PasswordGate uuid={uuid} />
-        </main>
-      )
-    }
+  if (canonical && canonical !== `/commission/${encodeURIComponent(uuid)}`) {
+    redirect(canonical)
   }
 
-  return (
-    <main className="page">
-      <div className="card">
-        <h1 className="card__title">{commission.title}</h1>
-        {commission.description ? <p className="card__intro">{commission.description}</p> : null}
-
-        <h2 className="card__heading">Files</h2>
-        <CommissionFiles files={commission.files} uuid={uuid} />
-      </div>
-
-      {/* Said once, near the buttons, because it is the one surprising thing
-          about the page: a download link is minted per click and dies within
-          minutes, so a copied URL will not work later or for anyone else. */}
-      <p className="note">
-        Each download link is generated for you and expires within a few minutes. Come back to this
-        page whenever you need the files again.
-      </p>
-    </main>
-  )
+  return <CommissionView commission={commission} uuid={commission.uuid} />
 }
