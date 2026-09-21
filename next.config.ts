@@ -38,54 +38,28 @@ const cdnHostnames = [
 ] as string[]
 
 /**
- * The private commissions bucket, hardcoded for exactly the reason the CDN host
- * above is: `images` is frozen into `.next/required-server-files.json` at build
- * time, so a value that only exists in the container's runtime `.env` never
- * becomes an allowed pattern.
+ * **There is deliberately no `remotePatterns` entry for the commissions
+ * bucket, and adding one back would re-open the hole that took the VPS down.**
  *
- * A gallery commission draws its grid from the previews stored beside each
- * original, which the browser fetches straight from S3 — so most tiles are not
- * `/_next/image` requests at all any more. A row with no preview still is one
- * (`@/components/commission/CommissionGallery` has the fallback), and without
- * this entry those 400 with `"url" parameter is not allowed`, which on an album
- * that predates previews is every tile in it.
- */
-const PRODUCTION_COMMISSIONS_HOSTNAME = 'krisi-commission-files.s3.eu-west-2.amazonaws.com'
-
-/**
- * The same host worked out from the environment, for any other checkout.
+ * A gallery used to draw its tiles through `next/image`, so the private
+ * bucket's host had to be an allowed pattern. It no longer does — previews are
+ * resized once at upload and served straight from S3, see
+ * `@/lib/commissions/thumbnails` — which means the entry was not merely dead
+ * config.
  *
- * Mirrors how `@/lib/aws/s3` addresses the bucket: virtual-host style against
- * real S3, and the endpoint's own host for an S3-compatible provider (MinIO,
- * R2, Spaces), where path-style keeps the bucket in the path and virtual-host
- * style puts it in front of the endpoint.
+ * A commission page hands the browser presigned URLs for the *originals*: the
+ * viewer needs one to show the photograph. While this host was allowed, anyone
+ * holding one of those URLs — every visitor, and anyone they forwarded the link
+ * to — could ask `/_next/image?url=<that URL>` and make this server download a
+ * 20MB original from S3 and decode it, as many times at once as they liked. On
+ * a two-core box that is a denial of service with no authentication in front of
+ * it, and it is what turned a slow album into an unreachable host: load average
+ * in the hundreds, sshd starved, nothing left to log into.
+ *
+ * Without the pattern that request is refused before a byte moves ("url"
+ * parameter is not allowed). Nothing on either commission layout needs the
+ * optimiser now, so there is nothing to weigh against it.
  */
-const commissionsHostname = (() => {
-  const bucket = process.env.S3_COMMISSIONS_BUCKET?.trim()
-  const region = process.env.S3_REGION?.trim()
-  const endpoint = process.env.S3_ENDPOINT?.trim()
-
-  if (!bucket) {
-    return undefined
-  }
-
-  if (!endpoint) {
-    return region ? `${bucket}.s3.${region}.amazonaws.com` : undefined
-  }
-
-  try {
-    const { hostname } = new URL(endpoint.includes('://') ? endpoint : `https://${endpoint}`)
-
-    return process.env.S3_FORCE_PATH_STYLE === 'true' ? hostname : `${bucket}.${hostname}`
-  } catch {
-    return undefined
-  }
-})()
-
-const commissionsHostnames = [
-  ...new Set([PRODUCTION_COMMISSIONS_HOSTNAME, commissionsHostname].filter(Boolean)),
-] as string[]
-
 const nextConfig: NextConfig = {
   output: 'standalone',
   // `X-Powered-By: Next.js` only tells a scanner which framework to try CVEs
@@ -102,13 +76,11 @@ const nextConfig: NextConfig = {
     /**
      * Optimised copies are held for a day rather than the default four hours.
      *
-     * This is for the commission gallery's fallback path — a photo with no
-     * stored preview. Its `src` is a presigned URL pinned to a signing window
-     * (`GALLERY_URL_WINDOW_SECONDS`), and the optimiser caches on the `src` it
-     * was given, so a cache entry is useful right up until the window rotates
-     * and the URL changes. Expiring sooner than that would have this server
-     * re-downloading and re-encoding the same originals several times inside
-     * one window.
+     * Everything the optimiser still handles is a public, immutable object
+     * behind the CDN — the portfolio's artwork, the hero, the about collage —
+     * so the only thing a short TTL buys is this server re-fetching and
+     * re-encoding files that did not change. A day is a conservative floor
+     * rather than a tuned number.
      */
     minimumCacheTTL: 86_400,
     remotePatterns: [
@@ -116,22 +88,6 @@ const nextConfig: NextConfig = {
       // hero) receive CloudFront URLs and would otherwise be rejected as an
       // unconfigured host.
       ...cdnHostnames.map((hostname) => ({
-        protocol: 'https' as const,
-        hostname,
-        pathname: '/**',
-      })),
-      /**
-       * The commission galleries.
-       *
-       * **`search` is deliberately omitted, which allows any query string** —
-       * and a presigned URL is *entirely* query string, so pinning one here
-       * would reject every image. That is not a hole: the bucket has public
-       * access blocked, so a URL under this host is worthless without a valid
-       * SigV4 signature, which only this server can mint. Anyone holding one
-       * already has the object and does not need the optimiser to fetch it for
-       * them.
-       */
-      ...commissionsHostnames.map((hostname) => ({
         protocol: 'https' as const,
         hostname,
         pathname: '/**',
@@ -148,12 +104,13 @@ const nextConfig: NextConfig = {
    * deployed container came back as nine gateway timeouts after 170 seconds
    * apiece, having taken 0.5s each sequentially a minute earlier.
    *
-   * **That is why galleries no longer use it**: the previews are made once, at
-   * upload, and stored in the bucket — see `@/lib/commissions/thumbnails`,
-   * which also explains the hardcoded seven-second upstream fetch timeout that
-   * no setting below can reach. What is left here is the fallback for a photo
-   * without a stored preview, and the rest of the site, and both are better off
-   * for these three.
+   * **That is why galleries no longer use it at all**: the previews are made
+   * once, at upload, and stored in the bucket — see
+   * `@/lib/commissions/thumbnails`, which also explains the hardcoded
+   * seven-second upstream fetch timeout that no setting below can reach. What
+   * is left for the optimiser is the public site's own images, which are small,
+   * few and behind a CDN; these three settings stay because nothing about them
+   * costs anything there.
    *
    * Two separate causes, one setting each:
    *

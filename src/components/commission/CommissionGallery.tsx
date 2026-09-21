@@ -31,25 +31,31 @@
  * through `next/image`, so this app's optimiser fetched each original
  * server-side and served a few-kilobyte WebP; that fixed the browser and moved
  * the problem onto the VPS, where the optimiser's hardcoded seven-second
- * upstream fetch timeout turned a burst of tiles into a grid of 504s.
+ * upstream fetch timeout turned a burst of tiles into a grid of 504s — and,
+ * with enough concurrent decodes, took the host down with it.
  * `@/lib/commissions/thumbnails` writes that story down in full. Resizing once,
  * at upload, is the version with no such cliff in it.
  *
- * A row with no preview — uploaded before they existed, or one whose resize
- * failed — still goes through `next/image` on the original, which is the second
- * arrangement above and is fine for a handful of photos at a time. *Generate
- * previews* in the admin uploader is what clears that backlog for an album.
- * `next.config.ts` carries the `remotePatterns` entry that authorises the
- * bucket's host, without which those fallback tiles 400.
+ * **A row with no preview therefore draws nothing at all** — a plain tile, and
+ * no request of any kind. That is deliberate and it is the lesson of the
+ * outage: the earlier version of this file fell back to `next/image` on the
+ * original, which meant an album whose previews had not been generated yet
+ * could still flood the server exactly as before, and whether it did came down
+ * to the order someone happened to do things in. A fallback that cannot be
+ * reached by accident is worth more here than a prettier grid. The photograph
+ * is still one click away — the viewer loads the original straight from S3 —
+ * and *Generate previews* in the admin uploader fills the tiles in.
+ *
+ * Nothing on a commission page goes through the image optimiser any more, in
+ * either layout.
  *
  * Opening a photo still shows the original, at whatever size it came off the
- * camera. It arrives over the preview the grid already loaded, so the viewer
- * has something sharp-ish on screen immediately instead of a black rectangle
- * for as long as a 15MB JPEG takes.
+ * camera. Where a preview exists it arrives over the copy the grid already
+ * loaded, so the viewer has something sharp-ish on screen immediately instead
+ * of a black rectangle for as long as a 15MB JPEG takes; where one does not, it
+ * fades in over an empty frame.
  */
 import React, { useCallback, useEffect, useState } from 'react'
-
-import Image from 'next/image'
 
 import type { CommissionGalleryImage } from '@/lib/commissions/gallery'
 
@@ -58,87 +64,33 @@ import { useCommissionDownload } from './useCommissionDownload'
 import { useCommissionView } from './useCommissionView'
 
 /**
- * The size the image optimiser is asked for on the fallback path — a row with
- * no stored preview — and nothing else.
+ * One tile's picture: the stored preview, or nothing.
  *
- * It describes the *tile*: the grid is `repeat(auto-fill, minmax(9rem, 1fr))`
- * inside a 68rem column, so a tile is around 150px on a wide monitor and about
- * half the viewport on a phone. Next rounds this up to its own size list and
- * emits two candidates, 256px for an ordinary display and 384px for a retina
- * one — twenty kilobytes or so per photograph, against the five megabytes the
- * original weighs.
+ * The `img` needs no intrinsic dimensions — the stylesheet has already sized
+ * the square it paints into — and `loading="lazy"` is what makes a 220-photo
+ * album cost only the screenful someone is actually looking at.
  *
- * **Given as `width`/`height` rather than as `sizes`, and that is not a
- * stylistic choice.** A `sizes` string makes `next/image` emit a `w`-descriptor
- * srcset with every candidate width it knows — nine URLs, each carrying a whole
- * presigned URL of some seven hundred characters, per photograph. On an album of
- * 150 that is megabytes of markup before a single image is fetched. Two
- * `x`-descriptor candidates say the same thing about a fixed-size tile.
- *
- * The numbers are not the photograph's aspect ratio — a commission row stores
- * no dimensions, and the artist's uploads are portrait and landscape both. They
- * are the tile's, which is a square; the stylesheet gives the image both of its
- * dimensions and crops with `object-fit: cover`, so the intrinsic ratio decides
- * nothing here. The optimiser keeps each photo's real ratio in the file it
- * returns, which is what lets the same file stand in as the viewer's
- * placeholder.
+ * With no preview it renders an empty box rather than reaching for the
+ * original. See the note at the top of this file: that is the difference
+ * between an album that looks unfinished and one that can take a small VPS off
+ * the internet.
  */
-const TILE_PIXELS = 192
-
-/**
- * One small copy of a photograph, from whichever of the two sources this row
- * has.
- *
- * Both branches paint into a box the stylesheet has already sized — a square
- * tile, or the viewer's frame — so neither needs intrinsic dimensions to avoid
- * a layout shift, and the `width`/`height` on the fallback are the optimiser's
- * instructions rather than the layout's.
- *
- * `loading="lazy"` is what makes a 220-photo album cost only the screenful
- * someone is actually looking at; `next/image` does the same by default on the
- * other branch.
- */
-function CommissionPreview({
-  alt,
-  className,
-  decorative,
-  image,
-}: {
-  alt: string
-  className: string
-  /**
-   * Hidden from assistive technology, for the viewer's copy: it is not the
-   * photograph as far as a screen reader is concerned, and the original
-   * underneath it carries the name.
-   */
-  decorative?: boolean
-  image: CommissionGalleryImage
-}) {
-  if (image.thumbUrl) {
-    return (
-      // A plain `img`, because the file is already the size it will be drawn
-      // at — putting it through the optimiser would be a round trip through
-      // this server to hand back the bytes it was given.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        alt={alt}
-        aria-hidden={decorative ? 'true' : undefined}
-        className={className}
-        decoding="async"
-        loading="lazy"
-        src={image.thumbUrl}
-      />
-    )
+function CommissionTile({ image }: { image: CommissionGalleryImage }) {
+  if (!image.thumbUrl) {
+    return <span aria-hidden="true" className="gallery__pending" />
   }
 
   return (
-    <Image
-      alt={alt}
-      aria-hidden={decorative ? 'true' : undefined}
-      className={className}
-      height={TILE_PIXELS}
-      src={image.url}
-      width={TILE_PIXELS}
+    // A plain `img`, because the file is already the size it will be drawn at.
+    // Putting it through `next/image` would be a round trip through this server
+    // to hand back the bytes it was given.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      alt={image.name}
+      className="gallery__image"
+      decoding="async"
+      loading="lazy"
+      src={image.thumbUrl}
     />
   )
 }
@@ -212,6 +164,21 @@ export default function CommissionGallery({
     return <p className="note">There are no photos in this album yet.</p>
   }
 
+  /**
+   * Photographs whose preview has not been generated yet, which draw as empty
+   * tiles. Said out loud under the grid rather than left as a mystery: a
+   * visitor who sees blank squares should know they are not broken and that the
+   * pictures are still there.
+   */
+  const pending = images.filter((photo) => !photo.thumbUrl).length
+
+  const pendingNote =
+    pending === images.length
+      ? 'These photos are still being prepared, so the grid is blank for now'
+      : pending === 1
+        ? 'One of these photos is still being prepared'
+        : `${pending} of these photos are still being prepared`
+
   return (
     <>
       <ul className="gallery">
@@ -223,11 +190,15 @@ export default function CommissionGallery({
               onClick={() => setIndex(position)}
               type="button"
             >
-              <CommissionPreview alt={photo.name} className="gallery__image" image={photo} />
+              <CommissionTile image={photo} />
             </button>
           </li>
         ))}
       </ul>
+
+      {pending > 0 ? (
+        <p className="note">{pendingNote} — open one to see it full size in the meantime.</p>
+      ) : null}
 
       {image ? (
         <div
@@ -281,17 +252,30 @@ export default function CommissionGallery({
                * The placeholder, and deliberately the *same* request the grid
                * has already made: identical `src`, so the browser serves it
                * from cache and the viewer has something on screen in the frame
-               * the click happened in. Asking for a larger copy here would be a
-               * fresh download to cover a gap measured in hundreds of
-               * milliseconds.
+               * the click happened in.
                *
                * Stretched far past its own size, which is exactly what a
                * placeholder is: soft for the moment it takes the original to
-               * arrive over the top of it. Both sources keep the photograph's
-               * own aspect ratio, so it lands in the frame at the shape the
-               * real picture is about to occupy.
+               * arrive over the top of it. It keeps the photograph's own aspect
+               * ratio, so it lands in the frame at the shape the real picture is
+               * about to occupy.
+               *
+               * It is not the photograph as far as assistive technology is
+               * concerned — the original below carries the name. And with no
+               * preview stored there is simply nothing here: the original fades
+               * in over an empty frame instead of over a soft version of
+               * itself.
                */}
-              <CommissionPreview alt="" className="viewer__preview" decorative image={image} />
+              {image.thumbUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt=""
+                  aria-hidden="true"
+                  className="viewer__preview"
+                  decoding="async"
+                  src={image.thumbUrl}
+                />
+              ) : null}
 
               {/*
                * The original, straight from the signed URL — no optimiser, no

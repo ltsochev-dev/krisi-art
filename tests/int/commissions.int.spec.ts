@@ -1446,8 +1446,8 @@ describe('commissions', () => {
               thumbKey: `${commission.uuid}/photo-one/.thumb.webp`,
             },
             {
-              // Uploaded before previews existed: the grid falls back to the
-              // image optimiser for this one rather than showing nothing.
+              // Uploaded before previews existed: the grid draws an inert
+              // placeholder for this one rather than reaching for the original.
               fileId: 'photo-two',
               filename: 'harbour.jpg',
               key: `${commission.uuid}/photo-two/harbour.jpg`,

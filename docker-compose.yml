@@ -23,6 +23,31 @@ services:
     restart: unless-stopped
     ports:
       - '3000:3000'
+    # A ceiling, so a runaway container is killed and restarted instead of
+    # taking the host down with it.
+    #
+    # This is written down because it happened: a gallery's tiles went through
+    # the image optimiser, each one decoding a 20-megapixel original, and enough
+    # of them at once exhausted the box's memory. What follows from that is not
+    # a slow page — it is a load average in the hundreds while the kernel
+    # swaps, sshd starved of the memory it needs to fork a login, and no way
+    # back in short of a console or a hard reboot. The cause is fixed (previews
+    # are resized once at upload and nothing on a commission page touches the
+    # optimiser now), but the class of failure is worth closing off, because a
+    # container that dies and restarts is a five-second outage and a box that
+    # thrashes is an afternoon.
+    #
+    # `memswap_limit` equal to `mem_limit` is the half that matters: it denies
+    # the container swap entirely, so it is OOM-killed at the limit rather than
+    # allowed to thrash its way there. With `restart: unless-stopped` above,
+    # Docker brings it straight back.
+    #
+    # **Tune this to the box.** It has to leave the host enough to keep sshd and
+    # nginx comfortable — on a 2GB VPS this is about right; on a 1GB one lower
+    # it to 700m, and on 4GB or more it can go up. Too high only makes it less
+    # protective; too low costs restarts under normal load.
+    mem_limit: 1500m
+    memswap_limit: 1500m
     env_file:
       - .env
     # DATABASE_URL is relative to the app's working directory (/app), so the

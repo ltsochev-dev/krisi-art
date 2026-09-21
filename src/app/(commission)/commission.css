@@ -267,13 +267,34 @@ body {
 }
 
 /* The tile is a square and the photograph is not, so it is cropped into one
-   here. `next/image` is given the tile's dimensions rather than the photo's —
-   see `TILE_PIXELS` — and both of them are overridden below, which is what keeps
-   a portrait and a landscape shot the same shape in the grid. */
+   here. The stored preview keeps the photo's own aspect ratio — it has to, since
+   the viewer lays the same file into the frame with `object-fit: contain` — so
+   these two dimensions plus `cover` are the whole of what keeps a portrait and a
+   landscape shot the same shape in the grid. */
 .gallery__image {
   display: block;
   height: 100%;
   object-fit: cover;
+  width: 100%;
+}
+
+/* A tile whose preview has not been generated yet.
+ *
+ * Deliberately inert — no `src`, no request of any kind. The component's own
+ * note explains why that matters more than a prettier tile would: the version
+ * of this that fell back to the image optimiser could take the host down when
+ * an album's previews had not been made yet. Hatched rather than flat so it
+ * reads as "not ready" instead of as a photograph of a grey square. */
+.gallery__pending {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--desk),
+    var(--desk) 6px,
+    #eaeaee 6px,
+    #eaeaee 12px
+  );
+  display: block;
+  height: 100%;
   width: 100%;
 }
 
