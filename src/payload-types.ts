@@ -660,6 +660,10 @@ export interface Commission {
          * The object key in the private bucket.
          */
         key: string;
+        /**
+         * The preview copy in the private bucket. Generated from the original; the artist never sets it.
+         */
+        thumbKey?: string | null;
         filename: string;
         /**
          * Optional. Shown to the client instead of the filename.
@@ -1163,6 +1167,7 @@ export interface CommissionsSelect<T extends boolean = true> {
     | {
         fileId?: T;
         key?: T;
+        thumbKey?: T;
         filename?: T;
         label?: T;
         filesize?: T;

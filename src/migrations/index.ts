@@ -15,6 +15,7 @@ import * as migration_20260827_080440_invoice_legal_note_en from './20260827_080
 import * as migration_20260904_132850_media_alt_optional from './20260904_132850_media_alt_optional'
 import * as migration_20260908_075813_commissions from './20260908_075813_commissions'
 import * as migration_20260920_095814_commission_albums from './20260920_095814_commission_albums'
+import * as migration_20260921_071237_commission_thumbnails from './20260921_071237_commission_thumbnails'
 
 export const migrations = [
   {
@@ -101,5 +102,10 @@ export const migrations = [
     up: migration_20260920_095814_commission_albums.up,
     down: migration_20260920_095814_commission_albums.down,
     name: '20260920_095814_commission_albums',
+  },
+  {
+    up: migration_20260921_071237_commission_thumbnails.up,
+    down: migration_20260921_071237_commission_thumbnails.down,
+    name: '20260921_071237_commission_thumbnails',
   },
 ]

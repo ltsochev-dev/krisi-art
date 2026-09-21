@@ -11,32 +11,41 @@
  * through `motion`, neither of which belongs on a page someone's friends open to
  * look at holiday photographs.
  *
- * **The `src` of every image is already a signed URL.** The server minted them
- * during the render (see `@/lib/commissions/gallery`), which is why the grid can
- * paint without a round trip per photo and why nothing here asks the server for
+ * **Every `src` here is already a signed URL.** The server minted them during
+ * the render (see `@/lib/commissions/gallery`), which is why the grid can paint
+ * without a round trip per photo and why nothing here asks the server for
  * anything until someone presses Download.
  *
- * **The grid draws resized copies; the viewer draws the original.** The first
- * version of this did neither: every tile was the artist's full-resolution
- * upload, scaled down by the browser. An album of 150 twenty-megapixel
- * photographs is gigabytes over the wire and 150 full-resolution decodes into
- * the compositor, which is enough to bring a sixteen-core desktop to its knees —
- * a browser has no way to know that the 6000px image it is decoding is about to
- * be painted into a 150px box.
+ * **The grid draws a stored preview; the viewer draws the original.** Each
+ * photograph is two objects in the bucket: the artist's upload, and a 512px
+ * WebP made from it when the file was registered. A tile is therefore a
+ * twenty-kilobyte `GET` straight from S3, and this app is not in the path of it
+ * at all.
  *
- * So the tiles go through `next/image`, which points them at this app's image
- * optimiser: it fetches each original from S3 *once*, server-side, and serves a
- * few-kilobyte WebP at the size the tile actually occupies, cached on disk
- * afterwards. The originals are untouched in the bucket and unchanged on the
- * document — nothing was re-uploaded and no derivative is stored — which is what
- * makes this work on an album that was uploaded and shared long before it.
+ * That last part is the whole design, and it was arrived at the hard way. The
+ * first version drew every tile from the full-resolution original and let the
+ * browser scale it down: gigabytes over the wire and 150 twenty-megapixel
+ * decodes into the compositor, which is enough to bring a sixteen-core desktop
+ * to its knees — a browser has no way to know that the 6000px image it is
+ * decoding is about to be painted into a 150px box. The second put the tiles
+ * through `next/image`, so this app's optimiser fetched each original
+ * server-side and served a few-kilobyte WebP; that fixed the browser and moved
+ * the problem onto the VPS, where the optimiser's hardcoded seven-second
+ * upstream fetch timeout turned a burst of tiles into a grid of 504s.
+ * `@/lib/commissions/thumbnails` writes that story down in full. Resizing once,
+ * at upload, is the version with no such cliff in it.
+ *
+ * A row with no preview — uploaded before they existed, or one whose resize
+ * failed — still goes through `next/image` on the original, which is the second
+ * arrangement above and is fine for a handful of photos at a time. *Generate
+ * previews* in the admin uploader is what clears that backlog for an album.
  * `next.config.ts` carries the `remotePatterns` entry that authorises the
- * bucket's host, without which every tile 400s.
+ * bucket's host, without which those fallback tiles 400.
  *
  * Opening a photo still shows the original, at whatever size it came off the
- * camera. It arrives over the small copy the grid already loaded, so the viewer
- * has something sharp-ish on screen immediately instead of a black rectangle for
- * as long as a 15MB JPEG takes.
+ * camera. It arrives over the preview the grid already loaded, so the viewer
+ * has something sharp-ish on screen immediately instead of a black rectangle
+ * for as long as a 15MB JPEG takes.
  */
 import React, { useCallback, useEffect, useState } from 'react'
 
@@ -49,8 +58,8 @@ import { useCommissionDownload } from './useCommissionDownload'
 import { useCommissionView } from './useCommissionView'
 
 /**
- * The size the optimiser is asked for, and the one number that decides how much
- * work this page is.
+ * The size the image optimiser is asked for on the fallback path — a row with
+ * no stored preview — and nothing else.
  *
  * It describes the *tile*: the grid is `repeat(auto-fill, minmax(9rem, 1fr))`
  * inside a 68rem column, so a tile is around 150px on a wide monitor and about
@@ -63,8 +72,7 @@ import { useCommissionView } from './useCommissionView'
  * stylistic choice.** A `sizes` string makes `next/image` emit a `w`-descriptor
  * srcset with every candidate width it knows — nine URLs, each carrying a whole
  * presigned URL of some seven hundred characters, per photograph. On an album of
- * 150 that is megabytes of markup before a single image is fetched, which is the
- * problem this change exists to solve rather than a cost to pay towards it. Two
+ * 150 that is megabytes of markup before a single image is fetched. Two
  * `x`-descriptor candidates say the same thing about a fixed-size tile.
  *
  * The numbers are not the photograph's aspect ratio — a commission row stores
@@ -72,9 +80,68 @@ import { useCommissionView } from './useCommissionView'
  * are the tile's, which is a square; the stylesheet gives the image both of its
  * dimensions and crops with `object-fit: cover`, so the intrinsic ratio decides
  * nothing here. The optimiser keeps each photo's real ratio in the file it
- * returns.
+ * returns, which is what lets the same file stand in as the viewer's
+ * placeholder.
  */
 const TILE_PIXELS = 192
+
+/**
+ * One small copy of a photograph, from whichever of the two sources this row
+ * has.
+ *
+ * Both branches paint into a box the stylesheet has already sized — a square
+ * tile, or the viewer's frame — so neither needs intrinsic dimensions to avoid
+ * a layout shift, and the `width`/`height` on the fallback are the optimiser's
+ * instructions rather than the layout's.
+ *
+ * `loading="lazy"` is what makes a 220-photo album cost only the screenful
+ * someone is actually looking at; `next/image` does the same by default on the
+ * other branch.
+ */
+function CommissionPreview({
+  alt,
+  className,
+  decorative,
+  image,
+}: {
+  alt: string
+  className: string
+  /**
+   * Hidden from assistive technology, for the viewer's copy: it is not the
+   * photograph as far as a screen reader is concerned, and the original
+   * underneath it carries the name.
+   */
+  decorative?: boolean
+  image: CommissionGalleryImage
+}) {
+  if (image.thumbUrl) {
+    return (
+      // A plain `img`, because the file is already the size it will be drawn
+      // at — putting it through the optimiser would be a round trip through
+      // this server to hand back the bytes it was given.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        alt={alt}
+        aria-hidden={decorative ? 'true' : undefined}
+        className={className}
+        decoding="async"
+        loading="lazy"
+        src={image.thumbUrl}
+      />
+    )
+  }
+
+  return (
+    <Image
+      alt={alt}
+      aria-hidden={decorative ? 'true' : undefined}
+      className={className}
+      height={TILE_PIXELS}
+      src={image.url}
+      width={TILE_PIXELS}
+    />
+  )
+}
 
 export default function CommissionGallery({
   images,
@@ -156,16 +223,7 @@ export default function CommissionGallery({
               onClick={() => setIndex(position)}
               type="button"
             >
-              {/* Lazy by default, which is what `next/image` does unless told
-                  otherwise: an album of 150 photographs fetches the screenful
-                  someone is actually looking at. */}
-              <Image
-                alt={photo.name}
-                className="gallery__image"
-                height={TILE_PIXELS}
-                src={photo.url}
-                width={TILE_PIXELS}
-              />
+              <CommissionPreview alt={photo.name} className="gallery__image" image={photo} />
             </button>
           </li>
         ))}
@@ -221,27 +279,19 @@ export default function CommissionGallery({
             <div className="viewer__frame">
               {/*
                * The placeholder, and deliberately the *same* request the grid
-               * has already made: identical `src` and identical dimensions, so
-               * the browser serves it from cache and the viewer has something on
-               * screen in the frame the click happened in. Asking for a larger
-               * one here would be a fresh download and a fresh optimisation to
-               * cover a gap measured in hundreds of milliseconds.
+               * has already made: identical `src`, so the browser serves it
+               * from cache and the viewer has something on screen in the frame
+               * the click happened in. Asking for a larger copy here would be a
+               * fresh download to cover a gap measured in hundreds of
+               * milliseconds.
                *
                * Stretched far past its own size, which is exactly what a
                * placeholder is: soft for the moment it takes the original to
-               * arrive over the top of it.
-               *
-               * It is not the photograph as far as assistive technology is
-               * concerned — the original below carries the name.
+               * arrive over the top of it. Both sources keep the photograph's
+               * own aspect ratio, so it lands in the frame at the shape the
+               * real picture is about to occupy.
                */}
-              <Image
-                alt=""
-                aria-hidden="true"
-                className="viewer__preview"
-                height={TILE_PIXELS}
-                src={image.url}
-                width={TILE_PIXELS}
-              />
+              <CommissionPreview alt="" className="viewer__preview" decorative image={image} />
 
               {/*
                * The original, straight from the signed URL — no optimiser, no

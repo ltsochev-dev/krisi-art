@@ -248,6 +248,67 @@ export const getPresignedUploadUrl = async ({
   )
 
 /**
+ * An object's bytes, in memory.
+ *
+ * The one place this server reads a commission object itself rather than
+ * signing a URL and stepping out of the way, and it exists for exactly one
+ * caller: `@/lib/commissions/thumbnails`, which needs the pixels in order to
+ * make the small copy the grid draws. A buffer rather than the stream S3 hands
+ * back because sharp is about to decode the whole frame regardless, so a stream
+ * would buy nothing and lose the simple error path.
+ *
+ * It follows that the caller has to know the object is a reasonable size
+ * *before* calling — see `MAX_THUMBNAIL_SOURCE_BYTES`. A commission may hold a
+ * 500MB archive and this would happily read all of it into the heap.
+ */
+export const getObjectBuffer = async ({
+  bucket,
+  key,
+}: {
+  bucket: string
+  key: string
+}): Promise<Buffer> => {
+  const object = await getS3Client().send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+
+  if (!object.Body) {
+    throw new Error(`The object ${key} came back with no body.`)
+  }
+
+  return Buffer.from(await object.Body.transformToByteArray())
+}
+
+/**
+ * Writes an object from this server.
+ *
+ * Every *client* upload goes through a presigned `PUT` instead (see
+ * `getPresignedUploadUrl`) so the bytes never transit the VPS. This is for the
+ * derivatives the server makes itself, which have no browser to upload them.
+ */
+export const putObject = async ({
+  body,
+  bucket,
+  cacheControl,
+  contentType,
+  key,
+}: {
+  body: Buffer
+  bucket: string
+  cacheControl?: string
+  contentType?: string
+  key: string
+}): Promise<void> => {
+  await getS3Client().send(
+    new PutObjectCommand({
+      Body: body,
+      Bucket: bucket,
+      CacheControl: cacheControl,
+      ContentType: contentType,
+      Key: key,
+    }),
+  )
+}
+
+/**
  * Size and type of an object as S3 actually stored it.
  *
  * The server never trusts a client-reported size: a presigned PUT cannot

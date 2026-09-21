@@ -43,11 +43,12 @@ const cdnHostnames = [
  * time, so a value that only exists in the container's runtime `.env` never
  * becomes an allowed pattern.
  *
- * A gallery commission draws its grid with `next/image` — see
- * `@/components/commission/CommissionGallery` — so every tile is a
- * `/_next/image?url=https://<this host>/...` request. Without this entry each
- * one 400s with `"url" parameter is not allowed` and the album renders as a grid
- * of broken images.
+ * A gallery commission draws its grid from the previews stored beside each
+ * original, which the browser fetches straight from S3 — so most tiles are not
+ * `/_next/image` requests at all any more. A row with no preview still is one
+ * (`@/components/commission/CommissionGallery` has the fallback), and without
+ * this entry those 400 with `"url" parameter is not allowed`, which on an album
+ * that predates previews is every tile in it.
  */
 const PRODUCTION_COMMISSIONS_HOSTNAME = 'krisi-commission-files.s3.eu-west-2.amazonaws.com'
 
@@ -101,13 +102,13 @@ const nextConfig: NextConfig = {
     /**
      * Optimised copies are held for a day rather than the default four hours.
      *
-     * A commission gallery's `src` is a presigned URL pinned to a signing
-     * window (`GALLERY_URL_WINDOW_SECONDS`), and the optimiser caches on the
-     * `src` it was given — so a cache entry is useful right up until the window
-     * rotates and the URL changes. Expiring sooner than that would have this
-     * server re-downloading and re-encoding an album of 150 originals several
-     * times inside one window, which is the work this whole arrangement exists
-     * to do once.
+     * This is for the commission gallery's fallback path — a photo with no
+     * stored preview. Its `src` is a presigned URL pinned to a signing window
+     * (`GALLERY_URL_WINDOW_SECONDS`), and the optimiser caches on the `src` it
+     * was given, so a cache entry is useful right up until the window rotates
+     * and the URL changes. Expiring sooner than that would have this server
+     * re-downloading and re-encoding the same originals several times inside
+     * one window.
      */
     minimumCacheTTL: 86_400,
     remotePatterns: [
@@ -140,13 +141,19 @@ const nextConfig: NextConfig = {
   /**
    * The image optimiser, tuned for a small VPS rather than for a build server.
    *
-   * A gallery commission is the only page on this site that asks it for more
-   * than a handful of images at once: 220 tiles, each one a 10-megapixel
-   * original pulled from S3 and decoded. Served one at a time that is under a
-   * second each; served all at once it collapses, and the measurements are not
-   * subtle — ten concurrent requests against the deployed container came back as
-   * nine gateway timeouts after 170 seconds apiece, having taken 0.5s each
-   * sequentially a minute earlier.
+   * These were set when a gallery commission drew all 220 of its tiles through
+   * here, each one a 10-megapixel original pulled from S3 and decoded. Served
+   * one at a time that is under a second each; served all at once it collapses,
+   * and the measurements are not subtle — ten concurrent requests against the
+   * deployed container came back as nine gateway timeouts after 170 seconds
+   * apiece, having taken 0.5s each sequentially a minute earlier.
+   *
+   * **That is why galleries no longer use it**: the previews are made once, at
+   * upload, and stored in the bucket — see `@/lib/commissions/thumbnails`,
+   * which also explains the hardcoded seven-second upstream fetch timeout that
+   * no setting below can reach. What is left here is the fallback for a photo
+   * without a stored preview, and the rest of the site, and both are better off
+   * for these three.
    *
    * Two separate causes, one setting each:
    *
@@ -155,11 +162,15 @@ const nextConfig: NextConfig = {
    *   spawns far more threads than the box has cores and every one of them holds
    *   a share of a decoded bitmap. One thread per image is slower in isolation
    *   and dramatically cheaper under load, which is the case that matters here.
-   * - `imgOptTimeoutInSeconds` defaults to **7**, which is the number that turns
-   *   a slow queue into a broken page: an image that would have finished in nine
-   *   seconds is abandoned and answered 500, and the failure is not cached, so
-   *   the next visitor starts it again. Thirty is long enough that a queued
-   *   image waits rather than fails.
+   * - `imgOptTimeoutInSeconds` defaults to **7** and bounds the sharp pipeline,
+   *   so an image that would have finished in nine seconds is abandoned and
+   *   answered 500 — and the failure is not cached, so the next visitor starts
+   *   it again. Thirty is long enough that a queued image waits rather than
+   *   fails. **Note what it does not cover.** The *upstream fetch* has its own
+   *   `AbortSignal.timeout(7000)`, hardcoded in
+   *   `next/dist/server/image-optimizer.js` with no setting behind it, and on a
+   *   burst of multi-megabyte originals that is the timeout that actually
+   *   fires. Raising this one was where we first looked and it changed nothing.
    *
    * `imgOptSequentialRead` reads the source progressively instead of holding the
    * whole decoded frame, which is what libvips recommends for exactly this shape

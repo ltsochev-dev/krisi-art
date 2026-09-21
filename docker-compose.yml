@@ -35,10 +35,12 @@ services:
       - media:/app/media
       # The `next/image` optimiser's output, which is otherwise in the
       # container's writable layer and therefore discarded on every deploy.
-      # A commission gallery is 220 tiles, each one a 10-megapixel original
-      # fetched from S3 and decoded, so re-doing them all on a release is the
-      # difference between a page that loads and one that times out. Tens of
-      # megabytes at most — the files in it are the ~15KB WebPs it serves.
+      # It matters much less than it did — a gallery's tiles are now previews
+      # stored in the bucket and fetched straight from S3 — but the fallback
+      # path for a photo without one still goes through the optimiser, as does
+      # the rest of the site, and re-doing that work on every release is pure
+      # waste. Tens of megabytes at most: the files in it are the ~15KB WebPs
+      # it serves.
       - image-cache:/app/.next/cache/images
     healthcheck:
       test:

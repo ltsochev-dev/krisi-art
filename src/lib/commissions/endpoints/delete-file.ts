@@ -66,12 +66,17 @@ export const deleteCommissionFileEndpoint: Endpoint = {
       req,
     })
 
+    // Both objects, because a photograph in a gallery has two: the original and
+    // the preview beside it. Missing the second would leave an object nothing
+    // references and no code path can ever find again.
+    const keys = [doomed.key, doomed.thumbKey].filter((key): key is string => Boolean(key))
+
     try {
-      await deleteObjects({ bucket: getCommissionsBucket(), keys: [doomed.key] })
+      await deleteObjects({ bucket: getCommissionsBucket(), keys })
     } catch (error) {
       req.payload.logger.error(
-        { err: error, key: doomed.key },
-        'Removed a commission file row but could not delete its S3 object; it is now orphaned.',
+        { err: error, keys },
+        'Removed a commission file row but could not delete its S3 objects; they are now orphaned.',
       )
     }
 

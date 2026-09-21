@@ -94,6 +94,33 @@ export const buildCommissionKey = ({
 }): string => `${commissionUuid}/${fileId}/${sanitiseFilename(filename)}`
 
 /**
+ * Where a photo's small copy lives: `<commission uuid>/<file id>/.thumb.webp`.
+ *
+ * A sibling of the original inside the same `fileId` folder, so a file and its
+ * derivative are deleted by the same prefix and nothing has to remember a
+ * second layout.
+ *
+ * **The leading dot is load-bearing.** `buildCommissionKey` puts every
+ * uploaded filename through `sanitiseFilename`, which strips leading dots — so
+ * no file key can ever be spelled this way, and a thumbnail can therefore never
+ * be written over the photograph it was made from. That is a property of the two
+ * functions rather than a check somewhere, which is the only kind of guarantee
+ * worth having about an overwrite that would destroy an original.
+ *
+ * WebP rather than the source format: it is what the browser was already being
+ * served by the image optimiser this replaces, it encodes a 512px preview in
+ * twenty-odd kilobytes, and fixing the extension means the key is derivable
+ * from the row rather than stored per format.
+ */
+export const buildCommissionThumbnailKey = ({
+  commissionUuid,
+  fileId,
+}: {
+  commissionUuid: string
+  fileId: string
+}): string => `${commissionUuid}/${fileId}/.thumb.webp`
+
+/**
  * Whether a key belongs to this commission.
  *
  * The register endpoint hands the key it was given straight to `headObject`, so

@@ -93,17 +93,19 @@ export const isAllowedCommissionMimeType = (value: unknown): value is string =>
  *
  * - a visitor's browser cache hits on the second visit rather than re-fetching
  *   every photograph;
- * - **this app's image optimiser caches on the `src` it was given.** The grid
- *   draws its tiles through `next/image`, so a URL that changed per request
- *   would have the server re-download and re-encode 150 originals on every page
- *   load — the exact work the optimiser exists to do once.
+ * - a photo still on the fallback path (no stored preview) keeps the copy this
+ *   app's image optimiser made from it, since that cache is keyed on the `src`
+ *   it was handed.
  *
- * A day, rather than the three hours this shipped with, and the second reason is
- * the whole of it. A rotation invalidates the optimiser's copy of *every* photo
- * in the album at once, and the next visitor pays for all of them — on an album
- * of 220 that is 220 originals fetched from S3 and decoded, which the deployed
- * container cannot do concurrently without timing out. Rotating twice a day
- * rather than eight times is most of that bill gone.
+ * A day, rather than the three hours this shipped with. The second reason above
+ * used to be the whole of it, when *every* tile went through the optimiser and a
+ * rotation meant the next visitor paid to re-encode all 220 photographs — which
+ * the deployed container could not do concurrently without timing out. Previews
+ * are stored in the bucket now (`./thumbnails`), so a rotation costs a visitor
+ * one re-download of an album of twenty-kilobyte files and costs this server
+ * nothing at all. The long window is now a courtesy rather than a load-bearing
+ * number, and it is kept because there is no reason to spend that download more
+ * often than necessary.
  *
  * The cost is that a signed URL which leaks — out of a shared screen, a browser
  * history — stays good for two days rather than six hours, on a page whose

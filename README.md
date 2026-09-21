@@ -163,27 +163,35 @@ navigations rather than XHR and need no rule. The current origins and the fact
 that `put-bucket-cors` replaces the whole configuration instead of merging are
 in the infra doc.
 
-**A gallery commission's grid goes through `next/image`.** The tiles are
-`/_next/image` requests pointing at the presigned URL of the original, so this
-server fetches each photograph from S3 once, resizes it to tile size and caches
-the result on disk — a five-megabyte JPEG becomes an eighteen-kilobyte WebP, and
-an album of 150 of them stops being a gigabyte of downloads and 150
-full-resolution decodes in the visitor's browser. Nothing is stored in the
-bucket and no document changed, so it applies to albums uploaded long before it.
-Two consequences worth knowing: **`next.config.ts` must list the commissions
-bucket's host under `images.remotePatterns`** (it is hardcoded there for the same
-build-time reason the CDN host is, and without it every tile 400s), and opening a
-photo still serves the untouched original, which is what the page's footnote
-tells the visitor.
+**A gallery commission's grid draws stored previews, not the originals.** Each
+photograph is two objects in the private bucket: the artist's upload, and a
+512px WebP written beside it at `<uuid>/<fileId>/.thumb.webp` when the file is
+registered. A tile is therefore a presigned `GET` of a twenty-kilobyte object,
+straight from S3 to the browser, and this server is not in the path of it —
+which is the point. Resizing on demand through `/_next/image` was the previous
+arrangement and it does not survive an album: the optimiser's upstream fetch
+carries a hardcoded, non-configurable seven-second timeout, so a browser asking
+for forty tiles at once over HTTP/2 gets a grid of 504s.
+`docs/plans/private-albums.md` has the measurements.
+
+Three things follow from it. **Albums uploaded before previews existed have
+none** — open the commission in the admin and press _Generate previews_, which
+works through them a batch at a time; until then those tiles fall back to
+`next/image` on the original, which still works and is still slow. **`next.config.ts`
+must keep listing the commissions bucket's host under `images.remotePatterns`**
+for that fallback (hardcoded there for the same build-time reason the CDN host
+is). And opening a photo still serves the untouched original, which is what the
+page's footnote tells the visitor.
 
 **Presigned lifetimes** default to 300 seconds for downloads — the URL is handed
 to the browser as JSON and navigated to at once, so it only has to survive one
 click — and 900 seconds for uploads, which is a whole `PUT` on a slow
 connection. Override with `COMMISSION_DOWNLOAD_TTL_SECONDS` and
 `COMMISSION_UPLOAD_TTL_SECONDS`. A gallery's image URLs are the exception: they
-are signed against a rolling 12-hour window (`COMMISSION_GALLERY_WINDOW_SECONDS`)
-so that every render inside one produces byte-identical URLs, which is what lets
-both the browser and the image optimiser cache what they made from them.
+are signed against a rolling 24-hour window (`COMMISSION_GALLERY_WINDOW_SECONDS`,
+clamped to three days) so that every render inside one produces byte-identical
+URLs, which is what lets a visitor's browser serve an album it has already
+looked at out of its own cache.
 
 **Views and downloads are logged locally**, in the `commission-access-log`
 collection, and shown on the commission document. No analytics service is
@@ -363,13 +371,15 @@ server {
 
     # Image optimisation, queued rather than run all at once.
     #
-    # A commission gallery is 220 tiles and a browser will ask for as many of
-    # them as it can multiplex, each one a 10-megapixel original that this box
-    # has to fetch from S3 and decode. Served one at a time that is well under a
-    # second each; served all at once the container thrashes and every request
-    # dies at the proxy — measured on this deployment, ten concurrent tiles came
-    # back as nine 504s after 170 seconds apiece, having taken 0.5s each
-    # sequentially a minute earlier.
+    # A gallery's tiles no longer come through here — they are stored previews
+    # served straight from S3 — but two things still do: a photo in an album
+    # that predates previews or whose resize failed, and the rest of the site.
+    # Each of those is a 10-megapixel original this box fetches from S3 and
+    # decodes. Served one at a time that is well under a second each; served
+    # all at once the container thrashes and every request dies at the proxy —
+    # measured on this deployment, ten concurrent tiles came back as nine 504s
+    # after 170 seconds apiece, having taken 0.5s each sequentially a minute
+    # earlier.
     #
     # `burst` with `delay` *queues* the excess instead of rejecting it, which is
     # the whole point: a tile that waits four seconds is a tile that appears,

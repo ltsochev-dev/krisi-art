@@ -120,8 +120,10 @@ export const deleteCommissionObjects: CollectionBeforeDeleteHook = async ({ id, 
       req,
     })
 
+    // Two objects per photograph — the original and the preview written beside
+    // it by `@/lib/commissions/thumbnails` — and one for everything else.
     const keys = (commission.files ?? [])
-      .map((file) => file.key)
+      .flatMap((file) => [file.key, file.thumbKey])
       .filter((key): key is string => Boolean(key))
 
     await deleteObjects({ bucket: getCommissionsBucket(), keys })

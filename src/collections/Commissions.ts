@@ -133,6 +133,28 @@ export const Commissions: CollectionConfig = {
           },
           required: true,
         },
+        {
+          name: 'thumbKey',
+          type: 'text',
+          /**
+           * The resized copy a gallery's grid draws, written beside the
+           * original when the file is registered — see
+           * `@/lib/commissions/thumbnails` for why the grid cannot simply
+           * resize on demand.
+           *
+           * Nullable, and every reader has to cope with that: a row uploaded
+           * before previews existed has none until the artist presses Generate
+           * previews, a file a browser cannot paint never gets one, and a
+           * failed resize deliberately leaves the file registered without it.
+           * The grid falls back to `next/image` in each case, which is the
+           * arrangement this replaced rather than a broken tile.
+           */
+          admin: {
+            description:
+              'The preview copy in the private bucket. Generated from the original; the artist never sets it.',
+            readOnly: true,
+          },
+        },
         { name: 'filename', type: 'text', admin: { readOnly: true }, required: true },
         {
           name: 'label',

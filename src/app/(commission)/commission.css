@@ -387,6 +387,18 @@ body {
   line-height: 1;
   padding: 0.5rem 0.75rem;
   position: absolute;
+  /* Above `.viewer__frame`, and this line is the difference between controls
+     that work and controls that only work from the keyboard.
+
+     The frame is `position: relative` and spans the whole overlay, and both it
+     and these buttons sit at `z-index: auto` in the viewer's stacking context —
+     so tree order decides, and the frame comes later in the markup. It was
+     therefore painted on top of all three buttons and, since hit-testing
+     follows paint order, swallowed every click on them; the clicks landed on
+     the figure, which stops propagation so the backdrop does not close. Nothing
+     was overflowing and nothing was hidden — the buttons were simply behind a
+     transparent sheet of photograph. */
+  z-index: 2;
 }
 
 .viewer__control:hover {

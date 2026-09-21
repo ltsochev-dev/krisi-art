@@ -10,6 +10,13 @@
  * are read back off S3 rather than taken from the request — a presigned `PUT`
  * cannot enforce a content length, so the only honest number is the one S3
  * reports.
+ *
+ * It is also where a photograph's preview is made, which is the one slow thing
+ * this handler does: the original is read back out of the bucket, resized and
+ * written beside it before the row is written. That costs a few seconds per
+ * photo during an upload session and saves the visitor's browser from asking
+ * this server to resize 220 originals on the fly — see
+ * `@/lib/commissions/thumbnails` for what that used to do to the page.
  */
 import type { Endpoint } from 'payload'
 
@@ -18,6 +25,7 @@ import { addDataAndFileToRequest, APIError } from 'payload'
 import { deleteObjects, getCommissionsBucket, headObject } from '@/lib/aws/s3'
 import { MAX_COMMISSION_FILE_BYTES } from '@/lib/commissions/constants'
 import { isKeyForCommission, sanitiseFilename } from '@/lib/commissions/keys'
+import { canThumbnail, generateCommissionThumbnail } from '@/lib/commissions/thumbnails'
 
 import { documentId, guardEditor, storageUnavailable } from './shared'
 
@@ -110,6 +118,29 @@ export const registerCommissionFileEndpoint: Endpoint = {
      */
     const filename = sanitiseFilename(key.split('/').slice(2).join('/'))
 
+    /**
+     * Best-effort, and deliberately so: a preview that could not be made must
+     * never cost the artist an upload that already succeeded. The row is
+     * written either way and the grid falls back to the image optimiser for
+     * that one photo, which is what every tile used to do. Pressing Generate
+     * previews in the uploader retries it.
+     */
+    const thumbKey = canThumbnail({ filesize: head.contentLength, mimeType: head.contentType })
+      ? await generateCommissionThumbnail({
+          bucket,
+          commissionUuid: commission.uuid,
+          fileId,
+          key,
+        }).catch((error: unknown) => {
+          req.payload.logger.error(
+            { err: error, key },
+            'Registered a commission file but could not build its preview; the grid will fall back to the image optimiser for it.',
+          )
+
+          return null
+        })
+      : null
+
     const updated = await req.payload.update({
       collection: 'commissions',
       id,
@@ -124,6 +155,7 @@ export const registerCommissionFileEndpoint: Endpoint = {
             key,
             label: typeof label === 'string' && label.trim() ? label.trim() : undefined,
             mimeType: head.contentType,
+            thumbKey,
             uploadedAt: new Date().toISOString(),
           },
         ],

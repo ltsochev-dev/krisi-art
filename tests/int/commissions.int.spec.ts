@@ -36,9 +36,23 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/aws/s3', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/aws/s3')>()),
   deleteObjects: vi.fn(async () => {}),
+  /**
+   * Presigning is a local HMAC and would work here — but only on a machine with
+   * real credentials in its environment, which is not a thing a test may
+   * depend on. Replaced with something deterministic so the *shape* of what the
+   * gallery asks for can be asserted: which key, which window, which bucket.
+   */
+  getPresignedDownloadUrl: vi.fn(
+    async ({ key }: { key: string }) => `https://signed.invalid/${key}`,
+  ),
 }))
 
-import { deleteObjects, getCommissionsBucket, hasCommissionsBucket } from '@/lib/aws/s3'
+import {
+  deleteObjects,
+  getCommissionsBucket,
+  getPresignedDownloadUrl,
+  hasCommissionsBucket,
+} from '@/lib/aws/s3'
 import {
   hasRecentView,
   logCommissionAccess,
@@ -48,10 +62,12 @@ import { GALLERY_URL_WINDOW_SECONDS, isDisplayableImage } from '@/lib/commission
 import { buildCommissionGallery, galleryWindowStart } from '@/lib/commissions/gallery'
 import {
   buildCommissionKey,
+  buildCommissionThumbnailKey,
   downloadFilename,
   isKeyForCommission,
   sanitiseFilename,
 } from '@/lib/commissions/keys'
+import { canThumbnail, MAX_THUMBNAIL_SOURCE_BYTES } from '@/lib/commissions/thumbnails'
 import { unlockCookiePaths, verifyPassword } from '@/lib/commissions/password'
 import {
   commissionPath,
@@ -1286,9 +1302,9 @@ describe('commissions', () => {
       const next = galleryWindowStart(new Date('2026-09-20T12:00:01.000Z'), window)
 
       // Two renders inside one window produce byte-identical URLs, which is the
-      // entire reason for this: gallery images are the artist's originals with
-      // no derivatives behind them, so a URL that changed per request would
-      // re-download every photo on every page load.
+      // entire reason for this: a URL that changed per request would have every
+      // visitor re-download every tile on every page load, whatever their
+      // browser already held.
       expect(early.toISOString()).toBe('2026-09-20T09:00:00.000Z')
       expect(late.toISOString()).toBe(early.toISOString())
       expect(next.toISOString()).toBe('2026-09-20T12:00:00.000Z')
@@ -1301,11 +1317,11 @@ describe('commissions', () => {
         delete process.env.COMMISSION_GALLERY_WINDOW_SECONDS
 
         /**
-         * A day, and the length is load-bearing rather than a taste: the grid
-         * draws its tiles through `next/image`, whose optimiser caches on the
-         * `src` it was handed, so every rotation of this window throws away the
-         * resized copy of every photo in the album and leaves the next visitor
-         * to pay for fetching and re-encoding all of them.
+         * A day. It was load-bearing when every tile went through `next/image`
+         * and a rotation threw away the resized copy of every photo in the
+         * album; previews are stored in the bucket now, so it is a courtesy to
+         * the visitor's browser cache instead — long enough that an album is
+         * downloaded once a day rather than once a visit.
          */
         expect(GALLERY_URL_WINDOW_SECONDS()).toBe(24 * 60 * 60)
 
@@ -1358,6 +1374,130 @@ describe('commissions', () => {
 
       expect(gallery.images).toHaveLength(0)
       expect(gallery.files.map((file) => file.name)).toEqual(['sunset.jpg'])
+    })
+  })
+  describe('gallery previews', () => {
+    const uuid = '11111111-2222-3333-4444-555555555555'
+
+    it('puts a preview beside its original, inside the commission', () => {
+      const thumbKey = buildCommissionThumbnailKey({ commissionUuid: uuid, fileId: 'photo-one' })
+
+      expect(thumbKey).toBe(`${uuid}/photo-one/.thumb.webp`)
+
+      // It has to pass the same check an uploaded key does, because it is
+      // deleted through the same code paths.
+      expect(isKeyForCommission(thumbKey, uuid)).toBe(true)
+      expect(isKeyForCommission(thumbKey, 'another-commission')).toBe(false)
+    })
+
+    it('cannot be spelled by any uploaded filename, so a preview can never overwrite a photo', () => {
+      const thumbKey = buildCommissionThumbnailKey({ commissionUuid: uuid, fileId: 'photo-one' })
+
+      /**
+       * The leading dot is the guarantee: `sanitiseFilename` strips leading
+       * dots, so a file key can never end in `/.thumb.webp` however the
+       * uploaded file was named. Without this, registering a photo called
+       * `.thumb.webp` would have its own resize written over the original.
+       */
+      for (const filename of ['.thumb.webp', '..thumb.webp', '.thumb.webp ', ' .thumb.webp']) {
+        expect(
+          buildCommissionKey({ commissionUuid: uuid, fileId: 'photo-one', filename }),
+        ).not.toBe(thumbKey)
+      }
+
+      expect(
+        buildCommissionKey({ commissionUuid: uuid, fileId: 'photo-one', filename: '.thumb.webp' }),
+      ).toBe(`${uuid}/photo-one/thumb.webp`)
+    })
+
+    it('resizes only what a browser paints, and only what fits in memory', () => {
+      expect(canThumbnail({ filesize: 4_000_000, mimeType: 'image/jpeg' })).toBe(true)
+
+      // A size S3 never reported is not a reason to refuse — the guard is
+      // against a known-huge object, not against an unknown one.
+      expect(canThumbnail({ mimeType: 'image/png' })).toBe(true)
+
+      // An archive and a HEIC have nothing to preview; the grid never draws
+      // them, so they belong in the file list underneath it.
+      expect(canThumbnail({ filesize: 1_000, mimeType: 'application/zip' })).toBe(false)
+      expect(canThumbnail({ filesize: 1_000, mimeType: 'image/heic' })).toBe(false)
+
+      // Above the ceiling it stays on the fallback path rather than pulling
+      // half a gigabyte onto the heap of a small container.
+      expect(
+        canThumbnail({ filesize: MAX_THUMBNAIL_SOURCE_BYTES + 1, mimeType: 'image/jpeg' }),
+      ).toBe(false)
+    })
+
+    it('signs the preview and the original, and nulls the preview when a row has none', async () => {
+      process.env.S3_COMMISSIONS_BUCKET = FAKE_BUCKET
+      vi.mocked(getPresignedDownloadUrl).mockClear()
+
+      const commission = await createCommission({ title: `${PREFIX} gallery previews` })
+      const stored = await payload.update({
+        collection: 'commissions',
+        data: {
+          files: [
+            {
+              fileId: 'photo-one',
+              filename: 'sunset.jpg',
+              key: `${commission.uuid}/photo-one/sunset.jpg`,
+              mimeType: 'image/jpeg',
+              thumbKey: `${commission.uuid}/photo-one/.thumb.webp`,
+            },
+            {
+              // Uploaded before previews existed: the grid falls back to the
+              // image optimiser for this one rather than showing nothing.
+              fileId: 'photo-two',
+              filename: 'harbour.jpg',
+              key: `${commission.uuid}/photo-two/harbour.jpg`,
+              mimeType: 'image/jpeg',
+            },
+          ],
+          layout: 'gallery',
+        },
+        depth: 0,
+        id: commission.id,
+        overrideAccess: true,
+      })
+
+      const { images } = await buildCommissionGallery({ commission: stored })
+
+      expect(images).toHaveLength(2)
+      expect(images[0].url).toContain('photo-one/sunset.jpg')
+      expect(images[0].thumbUrl).toContain('photo-one/.thumb.webp')
+      expect(images[1].url).toContain('photo-two/harbour.jpg')
+      expect(images[1].thumbUrl).toBeNull()
+
+      const calls = vi.mocked(getPresignedDownloadUrl).mock.calls.map(([args]) => args)
+
+      // Three signatures, not four: the row with no preview key asks for
+      // nothing extra.
+      expect(calls).toHaveLength(3)
+
+      // Every one of them against the commissions bucket — never the media
+      // bucket the helper would default to — and every one pinned to the same
+      // instant, which is what lets a browser cache hold a tile across loads.
+      expect(new Set(calls.map((args) => args.bucket))).toEqual(new Set([FAKE_BUCKET]))
+      expect(new Set(calls.map((args) => args.signingDate?.toISOString()))).toHaveLength(1)
+      expect(new Set(calls.map((args) => args.expiresIn))).toEqual(
+        new Set([GALLERY_URL_WINDOW_SECONDS() * 2]),
+      )
+
+      /**
+       * The preview carries neither response override: it is WebP whatever the
+       * original was, so a `Content-Disposition` naming it `sunset.jpg` would
+       * be a lie, and its own stored `Content-Type` is already right.
+       */
+      const preview = calls.find((args) => args.key?.endsWith('.thumb.webp'))
+
+      expect(preview?.responseContentDisposition).toBeUndefined()
+      expect(preview?.responseContentType).toBeUndefined()
+
+      const original = calls.find((args) => args.key?.endsWith('sunset.jpg'))
+
+      expect(original?.responseContentDisposition).toContain('inline')
+      expect(original?.responseContentType).toBe('image/jpeg')
     })
   })
 })

@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ALLOWED_COMMISSION_MIME_TYPES,
   isAllowedCommissionMimeType,
+  isDisplayableImage,
   MAX_COMMISSION_FILE_BYTES,
 } from '@/lib/commissions/constants'
 import type { Commission } from '@/payload-types'
@@ -241,6 +242,14 @@ export const CommissionUploader: UIFieldClientComponent = () => {
    */
   const [labelDrafts, setLabelDrafts] = useState<Record<string, string>>({})
   const [savingLabels, setSavingLabels] = useState<Record<string, boolean>>({})
+  /**
+   * How far the preview backfill has got, or `null` when it is not running.
+   * Doubles as the disabled flag for its button, so there is one piece of state
+   * rather than two that can disagree.
+   */
+  const [previewProgress, setPreviewProgress] = useState<null | { done: number; total: number }>(
+    null,
+  )
 
   const inputRef = useRef<HTMLInputElement>(null)
   const seeded = useRef(false)
@@ -572,6 +581,99 @@ export const CommissionUploader: UIFieldClientComponent = () => {
     [basePath, clearDraft, id, labelDrafts],
   )
 
+  /**
+   * Photographs in this commission with no stored preview.
+   *
+   * Only the ones a browser can paint count — see `isDisplayableImage`. An
+   * archive or a HEIC has nothing to preview and is not part of the backlog,
+   * which matters because the count is what decides whether the button below
+   * appears at all.
+   */
+  const missingPreviews = useMemo(
+    () => rows.filter((row) => !row.thumbKey && isDisplayableImage(row.mimeType)).length,
+    [rows],
+  )
+
+  /**
+   * Builds the missing previews, a batch per request.
+   *
+   * The endpoint does `THUMBNAIL_BATCH` photographs per call and answers with
+   * how many are left, so the loop is here rather than there: 220 downloads and
+   * resizes in one request would outlast any proxy and throw away the work it
+   * had done. Each response carries the whole `files` array, so the list
+   * re-renders after every batch and the artist watches the backlog drain.
+   *
+   * It stops on `remaining: 0` and *also* on a pass that generated nothing,
+   * which is what guarantees termination: a photo that cannot be resized comes
+   * back round as pending every time, so "nothing was left to try" is the only
+   * other honest end condition.
+   */
+  const buildPreviews = useCallback(async () => {
+    const total = missingPreviews
+
+    setPreviewProgress({ done: 0, total })
+
+    let done = 0
+    const failures = new Set<string>()
+
+    try {
+      for (;;) {
+        const response = await fetch(`${basePath}/${id}/thumbnails`, {
+          credentials: 'include',
+          method: 'POST',
+        })
+
+        if (response.status === 503) {
+          setStorageError(
+            await messageFrom(response, 'File storage is not configured on this server.'),
+          )
+
+          return
+        }
+
+        if (!response.ok) {
+          toast.error(await messageFrom(response, 'The previews could not be generated.'))
+
+          return
+        }
+
+        const result = (await response.json()) as {
+          errors?: string[]
+          files?: CommissionFileRow[]
+          generated?: number
+          remaining?: number
+        }
+
+        if (Array.isArray(result.files)) {
+          setRows(result.files)
+        }
+
+        for (const failure of result.errors ?? []) {
+          failures.add(failure)
+        }
+
+        done += result.generated ?? 0
+        setPreviewProgress({ done, total: Math.max(total, done) })
+
+        if ((result.remaining ?? 0) <= 0 || (result.generated ?? 0) <= 0) {
+          break
+        }
+      }
+
+      if (failures.size > 0) {
+        toast.error(
+          `Generated ${done} preview${done === 1 ? '' : 's'}. ${failures.size} could not be resized — ${[...failures].slice(0, 3).join('; ')}`,
+        )
+      } else {
+        toast.success(`Generated ${done} preview${done === 1 ? '' : 's'}.`)
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'The previews could not be generated.')
+    } finally {
+      setPreviewProgress(null)
+    }
+  }, [basePath, id, missingPreviews])
+
   const handleDelete = useCallback(
     async (row: CommissionFileRow) => {
       if (!window.confirm(`Delete “${row.filename}”? The file is removed from storage as well.`)) {
@@ -756,6 +858,43 @@ export const CommissionUploader: UIFieldClientComponent = () => {
         <h4 style={{ fontSize: '0.85rem', margin: 0 }}>
           Delivered files {rows.length > 0 ? `(${rows.length})` : ''}
         </h4>
+
+        {/*
+         * Only shown when there is a backlog, which for a commission uploaded
+         * from now on is never: `POST /:id/files` builds each preview as the
+         * file is registered. This is for the albums that predate previews, and
+         * for a photo whose resize failed at upload — pressing it again retries
+         * exactly those.
+         */}
+        {missingPreviews > 0 || previewProgress ? (
+          <div
+            style={{
+              alignItems: 'center',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 'calc(var(--base) / 3)',
+              marginTop: 'calc(var(--base) / 3)',
+            }}
+          >
+            <Button
+              buttonStyle="secondary"
+              disabled={isUploading || Boolean(previewProgress) || Boolean(storageError)}
+              onClick={() => void buildPreviews()}
+              size="small"
+            >
+              {previewProgress
+                ? `Generating… ${previewProgress.done}/${previewProgress.total}`
+                : `Generate previews (${missingPreviews})`}
+            </Button>
+
+            <span style={styles.hint}>
+              {missingPreviews} photo{missingPreviews === 1 ? '' : 's'} in a gallery commission
+              still {missingPreviews === 1 ? 'has' : 'have'} no small copy in storage, so the grid
+              falls back to resizing on demand — which is slow and, on a large album, unreliable.
+              This runs in batches and can be left to finish.
+            </span>
+          </div>
+        ) : null}
 
         {rows.length === 0 ? (
           <p style={{ ...styles.hint, marginTop: 'calc(var(--base) / 4)' }}>
